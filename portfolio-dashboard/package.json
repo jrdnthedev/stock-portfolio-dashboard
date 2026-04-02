@@ -7,7 +7,12 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:portfolio-dashboard": "node dist/portfolio-dashboard/server/server.mjs"
+    "serve:ssr:portfolio-dashboard": "node dist/portfolio-dashboard/server/server.mjs",
+    "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
+    "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
+    "type-check": "tsc --noEmit"
   },
   "prettier": {
     "printWidth": 100,
@@ -39,15 +44,28 @@
     "@angular/build": "^20.3.4",
     "@angular/cli": "^20.3.4",
     "@angular/compiler-cli": "^20.3.0",
+    "@angular-eslint/builder": "^19.0.0",
+    "@angular-eslint/eslint-plugin": "^19.0.0",
+    "@angular-eslint/eslint-plugin-template": "^19.0.0",
+    "@angular-eslint/schematics": "^19.0.0",
+    "@angular-eslint/template-parser": "^19.0.0",
+    "@eslint/js": "^9.0.0",
+    "@types/eslint__js": "^8.42.3",
     "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.17.19",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "angular-eslint": "^19.0.0",
+    "eslint": "^9.0.0",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.9.2"
+    "prettier": "^3.2.5",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.0.0"
   }
 }
