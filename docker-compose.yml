@@ -114,8 +114,8 @@ services:
   # Frontend Application
   frontend:
     build:
-      context: ./portfolio-dashboard
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: portfolio-dashboard/Dockerfile
     container_name: portfolio-frontend
     depends_on:
       - backend
