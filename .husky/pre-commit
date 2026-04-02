@@ -1,0 +1,28 @@
+# Run type checks
+echo "🔍 Running type checks..."
+npm run type-check --workspace=portfolio-dashboard || exit 1
+
+# Run linting
+echo "🔍 Running ESLint..."
+npm run lint --workspace=portfolio-dashboard || exit 1
+
+# Run backend checks (if Python files changed)
+PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "backend/.*\.py$" || true)
+
+if [ -n "$PYTHON_FILES" ]; then
+  echo "🐍 Running Python linting..."
+  cd backend
+
+  # Run ruff
+  ruff check . || exit 1
+
+  # Run black check
+  black --check . || exit 1
+
+  # Run mypy
+  mypy . || exit 1
+
+  cd ..
+fi
+
+echo "✅ All checks passed!"
