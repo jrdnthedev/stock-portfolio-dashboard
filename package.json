@@ -1,0 +1,27 @@
+{
+  "name": "stock-portfolio-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stock Portfolio Dashboard - Monorepo",
+  "scripts": {
+    "prepare": "husky",
+    "lint": "npm run lint --workspace=portfolio-dashboard",
+    "lint:backend": "cd backend && ruff check . && mypy .",
+    "format": "npm run format --workspace=portfolio-dashboard && cd backend && black . && ruff check --fix .",
+    "type-check": "npm run type-check --workspace=portfolio-dashboard && cd backend && mypy .",
+    "test": "npm run test --workspace=portfolio-dashboard"
+  },
+  "workspaces": [
+    "portfolio-dashboard"
+  ],
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.3",
+    "@commitlint/config-conventional": "^19.0.3",
+    "husky": "^9.0.11"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
