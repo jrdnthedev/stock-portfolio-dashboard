@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
     tags:
-      - "v*"
+      - 'v*'
   pull_request:
     branches: [main]
 
@@ -112,8 +112,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create .env file
-        run: cp .env.example .env
+      #   - name: Create .env file
+      #     run: |
+      #       if [ -f .env.example ]; then
+      #         cp .env.example .env
+      #       else
+      #         touch .env
+      #       fi
 
       - name: Build services
         run: docker-compose build backend frontend
