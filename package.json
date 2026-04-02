@@ -5,11 +5,18 @@
   "description": "Stock Portfolio Dashboard - Monorepo",
   "scripts": {
     "prepare": "husky",
-    "lint": "npm run lint --workspace=portfolio-dashboard",
-    "lint:backend": "cd backend && ruff check . && mypy .",
-    "format": "npm run format --workspace=portfolio-dashboard && cd backend && black . && ruff check --fix .",
-    "type-check": "npm run type-check --workspace=portfolio-dashboard && cd backend && mypy .",
-    "test": "npm run test --workspace=portfolio-dashboard"
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "npm run lint --workspace=portfolio-dashboard",
+    "lint:backend": "cd backend && ruff check .",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:frontend": "npm run format --workspace=portfolio-dashboard",
+    "format:backend": "cd backend && black . && ruff check --fix .",
+    "type-check": "npm run type-check:frontend && npm run type-check:backend",
+    "type-check:frontend": "npm run type-check --workspace=portfolio-dashboard",
+    "type-check:backend": "cd backend && mypy .",
+    "test": "npm run test:frontend",
+    "test:frontend": "npm run test --workspace=portfolio-dashboard",
+    "test:backend": "cd backend && pytest"
   },
   "workspaces": [
     "portfolio-dashboard"
