@@ -89,6 +89,7 @@ This application provides a comprehensive stock portfolio management system with
 - **Type Checking**: TypeScript Compiler, mypy
 - **Git Hooks**: Husky (Node), pre-commit (Python)
 - **Commit Linting**: Commitlint with Conventional Commits
+- **CI/CD**: GitHub Actions for automated testing and deployment
 
 ## 🚀 Quick Start
 
@@ -169,6 +170,10 @@ stock-portfolio-dashboard/
 ├── package.json               # Root workspace config
 ├── commitlint.config.js       # Commit message linting
 ├── .pre-commit-config.yaml    # Python pre-commit hooks
+├── .github/                   # GitHub configuration
+│   ├── workflows/             # GitHub Actions CI/CD
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── ISSUE_TEMPLATE/        # Issue templates
 ├── .husky/                    # Git hooks (Husky)
 ├── .vscode/                   # VS Code settings
 ├── .editorconfig              # Editor configuration
@@ -288,7 +293,77 @@ pre-commit install       # Installs Python pre-commit
 
 📖 **Detailed Guide**: See [README.CodeQuality.md](README.CodeQuality.md)
 
-## 🐳 Docker & Infrastructure
+## � CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+The project includes automated CI/CD pipelines that run on every push and pull request:
+
+#### CI Workflow
+
+- ✅ Frontend linting and type checking (ESLint, TypeScript)
+- ✅ Backend linting and type checking (Ruff, Black, mypy)
+- ✅ Security scanning (Bandit, CodeQL)
+- ✅ Unit tests for both frontend and backend
+- ✅ Commit message validation (Commitlint)
+- ✅ Production build verification
+
+#### Docker Build Workflow
+
+- 🐳 Builds Docker images for frontend and backend
+- 🐳 Pushes to GitHub Container Registry on main branch
+- 🐳 Tags images with branch name, commit SHA, and semantic versions
+- 🐳 Tests docker-compose setup
+
+#### Security Workflows
+
+- 🔒 CodeQL security analysis (weekly + on PR)
+- 🔒 Dependency review on pull requests
+- 🔒 Automated vulnerability scanning
+
+### Workflow Triggers
+
+**On Pull Request:**
+
+```
+✓ Run all tests and linting
+✓ Validate commit messages
+✓ Check code security
+✓ Build Docker images (no push)
+✓ Review dependencies
+```
+
+**On Push to Branches:**
+
+```
+develop → DEV environment (auto-deploy)
+staging → QA environment (auto-deploy)
+main    → PROD environment (requires approval)
+```
+
+**Manual Trigger:**
+
+- Deploy to any environment on-demand via Actions tab
+
+### Viewing CI Status
+
+Check the **Actions** tab in your GitHub repository to view:
+
+- Build status and logs
+- Test results
+- Security scan reports
+- Docker image build outputs
+
+### CI/CD Configuration Files
+
+- `.github/workflows/ci.yml` - Main CI pipeline (tests, linting)
+- `.github/workflows/deploy.yml` - Environment deployments (DEV/QA/PROD)
+- `.github/workflows/docker-build.yml` - Docker image builds
+- `.github/workflows/codeql.yml` - Security analysis
+- `.github/workflows/dependency-review.yml` - Dependency scanning
+- `.github/ENVIRONMENTS_GUIDE.md` - Deployment setup guide
+
+## �🐳 Docker & Infrastructure
 
 ### Docker Compose Services
 
