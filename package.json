@@ -22,6 +22,9 @@
     "portfolio-dashboard"
   ],
   "devDependencies": {
+    "@angular/build": "^20.3.4",
+    "@angular/compiler": "^20.3.0",
+    "@angular/compiler-cli": "^20.3.0",
     "@commitlint/cli": "^19.0.3",
     "@commitlint/config-conventional": "^19.0.3",
     "husky": "^9.0.11"

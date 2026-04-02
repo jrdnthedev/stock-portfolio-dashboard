@@ -35,7 +35,7 @@ jobs:
         run: npm run type-check:frontend
 
       - name: Run tests
-        run: npm run test:frontend -- --watch=false --browsers=ChromeHeadless
+        run: npm run test:frontend -- --run
 
       - name: Build application
         run: npm run build --workspace=portfolio-dashboard

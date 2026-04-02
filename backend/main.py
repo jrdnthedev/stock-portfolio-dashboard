@@ -1,12 +1,13 @@
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+
 from routes import router as stocks_router
 
 app = FastAPI(
     title="Stock Portfolio API",
     description="Backend API for Stock Portfolio Dashboard",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS
@@ -21,13 +22,16 @@ app.add_middleware(
 # Include routers
 app.include_router(stocks_router)
 
+
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Stock Portfolio API", "status": "running"}
 
+
 @app.get("/api/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     return {"status": "healthy"}
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
