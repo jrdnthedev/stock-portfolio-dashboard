@@ -291,7 +291,7 @@ npm install              # Installs Husky
 pre-commit install       # Installs Python pre-commit
 ```
 
-📖 **Detailed Guide**: See [README.CodeQuality.md](README.CodeQuality.md)
+📖 **Detailed Guide**: See [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)
 
 ## � CI/CD Pipeline
 
@@ -403,14 +403,15 @@ docker-compose up --build
 - **Backend**: `backend/Dockerfile` - Python 3.11 slim image
 - **Frontend**: `portfolio-dashboard/Dockerfile` - Multi-stage build (Node → nginx)
 
-📖 **Detailed Guide**: See [README.Docker.md](README.Docker.md)
+📖 **Detailed Guide**: See [docs/DOCKER.md](docs/DOCKER.md)
 
 ## 📚 Documentation
 
 ### Available Documentation
 
-- **[README.CodeQuality.md](docs/README.CodeQuality.md)** - Code quality tools, linting, formatting, and commit conventions
-- **[README.Docker.md](docs/README.Docker.md)** - Docker setup, commands, and troubleshooting
+- **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)** - Code quality tools, linting, formatting, and commit conventions
+- **[docs/DOCKER.md](docs/DOCKER.md)** - Docker setup, commands, and troubleshooting
+- **[.github/ENVIRONMENTS_GUIDE.md](.github/ENVIRONMENTS_GUIDE.md)** - Deployment environments setup
 - **[backend/README.md](backend/README.md)** - Backend API documentation and setup
 - **[portfolio-dashboard/README.md](portfolio-dashboard/README.md)** - Frontend application documentation
 

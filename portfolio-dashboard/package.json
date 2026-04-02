@@ -14,18 +14,6 @@
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
     "type-check": "tsc --noEmit"
   },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
-  },
   "private": true,
   "dependencies": {
     "@angular/common": "^20.3.0",
