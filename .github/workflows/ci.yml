@@ -11,10 +11,6 @@ jobs:
     name: Frontend - Lint, Type Check & Test
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ./portfolio-dashboard
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,27 +18,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: portfolio-dashboard/package-lock.json
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint
+        run: npm run lint:frontend
 
       - name: Check formatting (Prettier)
-        run: npm run format:check
+        run: npm run format:check --workspace=portfolio-dashboard
 
       - name: Type check
-        run: npm run type-check
+        run: npm run type-check:frontend
 
       - name: Run tests
-        run: npm test -- --watch=false --browsers=ChromeHeadless
+        run: npm run test:frontend -- --watch=false --browsers=ChromeHeadless
 
       - name: Build application
-        run: npm run build
+        run: npm run build --workspace=portfolio-dashboard
 
   backend-checks:
     name: Backend - Lint, Type Check & Test
@@ -59,8 +55,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: '3.11'
+          cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
@@ -104,7 +100,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Install commitlint
         run: |
