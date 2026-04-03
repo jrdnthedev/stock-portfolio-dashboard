@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     stock_api_key: str = ""
     stock_api_url: str = ""
 
-    class Config:
+    class ConfigDict:
         env_file = ".env"
         case_sensitive = False
 
