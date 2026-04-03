@@ -19,8 +19,7 @@ RUN npm ci
 COPY portfolio-dashboard ./portfolio-dashboard/
 
 # Build the application for production
-WORKDIR /workspace/portfolio-dashboard
-RUN npm run build
+RUN npm run build --workspace=portfolio-dashboard
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine
@@ -29,7 +28,7 @@ FROM nginx:alpine
 # COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built application from build stage
-COPY --from=build /workspace/portfolio-dashboard/dist/portfolio-dashboard/browser /usr/share/nginx/html
+COPY --from=build /workspace/portfolio-dashboard/dist/portfolio-dashboard /usr/share/nginx/html
 
 # Expose port
 EXPOSE 80
