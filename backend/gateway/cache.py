@@ -10,7 +10,7 @@ print("Connected:", response)
 
 def fetch_data(key: str) -> dict:
 
-    cached_data = cast(str | None, r.get(key))
+    cached_data = r.get(key)
     if cached_data is not None:
         try:
             return cast(dict, json.loads(cached_data))
