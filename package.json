@@ -16,7 +16,7 @@
     "type-check:backend": "cd backend && mypy .",
     "test": "npm run test:frontend",
     "test:frontend": "npm run test --workspace=portfolio-dashboard",
-    "test:backend": "cd backend && pytest"
+    "test:backend": "cd backend && pytgit est"
   },
   "workspaces": [
     "portfolio-dashboard"
