@@ -1,6 +1,14 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-from models import Stock
+
+class Stock(BaseModel):
+    symbol: str
+    name: str
+    current_price: float
+    change: float
+    change_percent: float
+
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
