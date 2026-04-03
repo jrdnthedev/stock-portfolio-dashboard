@@ -9,7 +9,7 @@ on:
   workflow_dispatch: # Manual trigger
     inputs:
       environment:
-        description: "Environment to deploy to"
+        description: 'Environment to deploy to'
         required: true
         type: choice
         options:
@@ -69,7 +69,7 @@ jobs:
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./portfolio-dashboard
+          context: .
           file: ./portfolio-dashboard/Dockerfile
           push: true
           tags: |
