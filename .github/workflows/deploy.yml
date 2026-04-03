@@ -98,7 +98,7 @@ jobs:
           echo "Image tag: ${{ needs.build-images.outputs.image-tag }}"
           # Add your deployment commands here
           # Examples:
-          # - SSH to server and run docker-compose pull && docker-compose up -d
+          # - SSH to server and run docker compose pull && docker compose up -d
           # - kubectl set image deployment/...
           # - terraform apply
           # - AWS ECS update-service
@@ -166,9 +166,9 @@ jobs:
           echo "Image tag: ${{ needs.build-images.outputs.image-tag }}"
           # Add your production deployment commands here
 
-          # Example: Deploy using docker-compose
+          # Example: Deploy using docker compose
           # scp docker-compose.yml user@prod-server:/app/
-          # ssh user@prod-server "cd /app && docker-compose pull && docker-compose up -d"
+          # ssh user@prod-server "cd /app && docker compose pull && docker compose up -d"
 
       - name: Run smoke tests
         run: |
@@ -203,4 +203,4 @@ jobs:
         run: |
           echo "⏮️ Rolling back ${{ inputs.environment }} to previous version..."
           # Add rollback commands here
-          # docker-compose down && docker-compose up -d --use-previous-image
+          # docker compose down && docker compose up -d --use-previous-image
