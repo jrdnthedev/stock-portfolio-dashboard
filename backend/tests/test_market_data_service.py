@@ -6,7 +6,7 @@ from domains.market_data.service.market_data_service import MarketDataService
 
 @patch("domains.market_data.service.market_data_service.PricingAdapter")
 def test_get_fundamental_snapshot(mock_pricing_adapter: MagicMock) -> None:
-    _ = mock_pricing_adapter  # noqa: ARG002
+    _ = mock_pricing_adapter
     service = MarketDataService(["localhost:9092"], "market.prices.live")
     result = service.get_fundamental_snapshot(1, "Q1 2024")
     assert isinstance(result, Fundamental)
@@ -16,7 +16,7 @@ def test_get_fundamental_snapshot(mock_pricing_adapter: MagicMock) -> None:
 
 @patch("domains.market_data.service.market_data_service.PricingAdapter")
 def test_start_and_stop_price_simulation(mock_pricing_adapter: MagicMock) -> None:
-    _ = mock_pricing_adapter  # noqa: ARG002
+    _ = mock_pricing_adapter
     service = MarketDataService(["localhost:9092"], "market.prices.live")
     service.pricing_adapter.generate_mock_ohlcv = MagicMock()  # type: ignore[method-assign]
     service.start_price_simulation(1, "2024-01-01", days=2, interval_sec=0.01)
