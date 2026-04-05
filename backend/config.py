@@ -23,6 +23,17 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     DEBUG: bool = True
 
+    # Redis settings
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str = ""
+    redis_default_ttl: int = 1800  # 30 minutes
+
+    # Kafka settings
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_topic_prefix: str = "stock-portfolio"
+
     class ConfigDict:
         case_sensitive = False
 

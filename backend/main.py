@@ -1,14 +1,29 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from routes import router as stocks_router
+try:
+    from backend.gateway.formatter import error_response, success_response
+    from backend.gateway.health import get_health_status
+    from backend.middleware.logging import RequestLoggingMiddleware
+    from backend.routes_market import router as market_router
+    from backend.routes_portfolio import router as portfolio_router
+except ImportError:
+    from gateway.formatter import error_response, success_response
+    from gateway.health import get_health_status
+    from middleware.logging import RequestLoggingMiddleware
+    from routes_market import router as market_router
+    from routes_portfolio import router as portfolio_router
 
 app = FastAPI(
     title="Stock Portfolio API",
     description="Backend API for Stock Portfolio Dashboard",
     version="1.0.0",
 )
+
+# Configure request logging
+app.add_middleware(RequestLoggingMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -20,7 +35,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(stocks_router)
+app.include_router(market_router)
+app.include_router(portfolio_router)
 
 
 @app.get("/")
@@ -29,9 +45,50 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/api/health")
-async def health_check() -> dict[str, str]:
-    return {"status": "healthy"}
+async def health_check() -> JSONResponse:
+    """
+    Comprehensive health check endpoint.
+
+    Checks connectivity and status of:
+    - PostgreSQL database
+    - Redis cache
+    - Kafka message broker
+
+    Returns 200 if all services healthy, 503 if any service is down.
+    """
+    health_data = get_health_status()
+
+    if health_data["status"] == "healthy":
+        response = success_response(
+            data=health_data["services"],
+            message="All services healthy",
+            metadata={"timestamp": health_data["timestamp"]},
+        )
+        return JSONResponse(content=response, status_code=status.HTTP_200_OK)
+    else:
+        response = error_response(
+            message="One or more services unhealthy",
+            metadata={
+                "timestamp": health_data["timestamp"],
+                "services": health_data["services"],
+            },
+        )
+        return JSONResponse(content=response, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Run without reload to avoid import path issues with multiprocessing
+    # For development with auto-reload, use command: uvicorn main:app --reload
+    import sys
+
+    # Ensure current directory is in Python path
+    if "." not in sys.path:
+        sys.path.insert(0, ".")
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        reload=False,
+        log_level="info",
+    )
