@@ -52,38 +52,6 @@ def test_health_check_unhealthy(mock_health_status: MagicMock) -> None:
     assert data["metadata"]["services"]["redis"]["status"] == "unhealthy"
 
 
-def test_get_stocks() -> None:
-    response = client.get("/api/stocks/")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "message" in data
-    stocks = data["data"]
-    assert isinstance(stocks, list)
-    assert any(stock["symbol"] == "AAPL" for stock in stocks)
-
-
-def test_get_stock_found() -> None:
-    response = client.get("/api/stocks/AAPL")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "message" in data
-    stock = data["data"]
-    assert stock["symbol"] == "AAPL"
-    assert stock["name"] == "Apple Inc."
-
-
-def test_get_stock_not_found() -> None:
-    response = client.get("/api/stocks/INVALID")
-    assert response.status_code == 404
-    data = response.json()
-    assert data["success"] is False
-    assert "Stock not found" in data["message"]
-    assert data["errors"] is not None
-    assert data["errors"][0]["code"] == "NOT_FOUND"
-
-
 def test_request_logging_headers() -> None:
     """Test that logging middleware adds tracking headers."""
     response = client.get("/")

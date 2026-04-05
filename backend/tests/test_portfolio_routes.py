@@ -204,6 +204,7 @@ class TestDeleteHolding:
 
     def test_delete_holding_success(self) -> None:
         """Test deleting a holding."""
+        # Use holding 103 for regular delete test
         response = client.delete("/v1/portfolio/1/holdings/103")
         assert response.status_code == 200
         data = response.json()
