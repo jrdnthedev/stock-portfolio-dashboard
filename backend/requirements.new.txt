@@ -8,6 +8,11 @@ httpx==0.27.2
 redis==5.0.1
 kafka-python-ng==2.2.2
 
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
 # Development Dependencies
 black==26.3.1
 ruff==0.3.0
