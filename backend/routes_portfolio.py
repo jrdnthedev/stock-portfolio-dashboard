@@ -8,8 +8,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 try:
+    from backend.gateway.cache import get_cache_service
     from backend.gateway.formatter import not_found_response, success_response
 except ImportError:
+    from gateway.cache import get_cache_service
     from gateway.formatter import not_found_response, success_response
 
 
@@ -357,6 +359,13 @@ async def create_holding(id: int, holding: HoldingCreate = Body(...)) -> JSONRes
 
     _next_holding_id += 1
 
+    # Invalidate caches
+    cache = get_cache_service()
+    cache.delete(f"portfolio:{id}:holdings")
+    cache.delete(f"portfolio:{id}:performance")
+    cache.delete(f"portfolio:{id}:allocation")
+    cache.delete(f"portfolio:{id}")
+
     response = success_response(
         data=new_holding,
         message=f"Holding created successfully in portfolio {id}",
@@ -395,6 +404,13 @@ async def update_holding(
     )
     holding["updated_at"] = datetime.now().isoformat() + "Z"
 
+    # Invalidate caches
+    cache = get_cache_service()
+    cache.delete(f"portfolio:{id}:holdings")
+    cache.delete(f"portfolio:{id}:performance")
+    cache.delete(f"portfolio:{id}:allocation")
+    cache.delete(f"portfolio:{id}")
+
     response = success_response(
         data=holding,
         message=f"Holding {hid} updated successfully",
@@ -418,6 +434,13 @@ async def delete_holding(id: int, hid: int) -> JSONResponse:
 
     # Remove holding
     MOCK_HOLDINGS[id] = [h for h in holdings if h["id"] != hid]
+
+    # Invalidate caches
+    cache = get_cache_service()
+    cache.delete(f"portfolio:{id}:holdings")
+    cache.delete(f"portfolio:{id}:performance")
+    cache.delete(f"portfolio:{id}:allocation")
+    cache.delete(f"portfolio:{id}")
 
     response = success_response(
         data={"id": hid, "deleted": True},
