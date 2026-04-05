@@ -9,7 +9,7 @@ redis==5.0.1
 kafka-python-ng==2.2.2
 
 # Development Dependencies
-black==26.3.1.
+black==26.3.1
 ruff==0.3.0
 mypy==1.9.0
 pytest==8.1.1
