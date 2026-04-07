@@ -1,24 +1,29 @@
-"""Portfolio management API routes."""
+"""Portfolio management API routes with database integration."""
 
 from datetime import date, datetime
-from typing import Any, cast
+from uuid import UUID
 
-from fastapi import APIRouter, Body, Query, status
+from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session, joinedload
 
 try:
+    from backend.database.database import get_db
+    from backend.database.models import Holding, Portfolio, Ticker
     from backend.gateway.cache import get_cache_service
     from backend.gateway.formatter import not_found_response, success_response
 except ImportError:
+    from database.database import get_db
+    from database.models import Holding, Portfolio, Ticker
     from gateway.cache import get_cache_service
     from gateway.formatter import not_found_response, success_response
 
 
-class Portfolio(BaseModel):
-    """Portfolio model."""
+class PortfolioResponse(BaseModel):
+    """Portfolio response model."""
 
-    id: int
+    id: str
     name: str
     description: str | None
     created_at: str
@@ -29,12 +34,12 @@ class Portfolio(BaseModel):
     total_gain_percent: float
 
 
-class Holding(BaseModel):
-    """Holding model."""
+class HoldingResponse(BaseModel):
+    """Holding response model."""
 
-    id: int
-    portfolio_id: int
-    ticker: str
+    id: str
+    portfolio_id: str
+    ticker: dict[str, str]
     quantity: float
     average_cost: float
     current_price: float
@@ -82,175 +87,116 @@ class AllocationItem(BaseModel):
 
 router = APIRouter(prefix="/v1/portfolio", tags=["portfolio"])
 
-# Mock data for demonstration
-MOCK_PORTFOLIOS = {
-    1: {
-        "id": 1,
-        "name": "Growth Portfolio",
-        "description": "Technology and growth stocks",
-        "created_at": "2025-01-15T10:30:00Z",
-        "updated_at": "2026-04-05T15:00:00Z",
-        "total_value": 125750.00,
-        "total_cost": 100000.00,
-        "total_gain": 25750.00,
-        "total_gain_percent": 25.75,
-    },
-    2: {
-        "id": 2,
-        "name": "Dividend Portfolio",
-        "description": "Income-focused dividend stocks",
-        "created_at": "2025-06-20T14:00:00Z",
-        "updated_at": "2026-04-05T15:00:00Z",
-        "total_value": 82300.00,
-        "total_cost": 75000.00,
-        "total_gain": 7300.00,
-        "total_gain_percent": 9.73,
-    },
-}
-
-MOCK_HOLDINGS: dict[int, list[dict[str, Any]]] = {
-    1: [
-        {
-            "id": 101,
-            "portfolio_id": 1,
-            "ticker": "AAPL",
-            "quantity": 100.0,
-            "average_cost": 150.00,
-            "current_price": 180.25,
-            "total_cost": 15000.00,
-            "total_value": 18025.00,
-            "gain": 3025.00,
-            "gain_percent": 20.17,
-            "purchased_at": "2025-01-15T10:30:00Z",
-            "updated_at": "2026-04-05T15:00:00Z",
-        },
-        {
-            "id": 102,
-            "portfolio_id": 1,
-            "ticker": "GOOGL",
-            "quantity": 200.0,
-            "average_cost": 130.00,
-            "current_price": 143.00,
-            "total_cost": 26000.00,
-            "total_value": 28600.00,
-            "gain": 2600.00,
-            "gain_percent": 10.00,
-            "purchased_at": "2025-02-10T11:00:00Z",
-            "updated_at": "2026-04-05T15:00:00Z",
-        },
-        {
-            "id": 103,
-            "portfolio_id": 1,
-            "ticker": "MSFT",
-            "quantity": 140.0,
-            "average_cost": 420.71,
-            "current_price": 420.15,
-            "total_cost": 58899.40,
-            "total_value": 58821.00,
-            "gain": -78.40,
-            "gain_percent": -0.13,
-            "purchased_at": "2025-03-05T09:45:00Z",
-            "updated_at": "2026-04-05T15:00:00Z",
-        },
-    ],
-    2: [
-        {
-            "id": 201,
-            "portfolio_id": 2,
-            "ticker": "JPM",
-            "quantity": 150.0,
-            "average_cost": 165.00,
-            "current_price": 178.50,
-            "total_cost": 24750.00,
-            "total_value": 26775.00,
-            "gain": 2025.00,
-            "gain_percent": 8.18,
-            "purchased_at": "2025-06-20T14:00:00Z",
-            "updated_at": "2026-04-05T15:00:00Z",
-        },
-        {
-            "id": 202,
-            "portfolio_id": 2,
-            "ticker": "V",
-            "quantity": 180.0,
-            "average_cost": 279.17,
-            "current_price": 308.47,
-            "total_cost": 50250.00,
-            "total_value": 55525.00,
-            "gain": 5275.00,
-            "gain_percent": 10.50,
-            "purchased_at": "2025-07-10T13:30:00Z",
-            "updated_at": "2026-04-05T15:00:00Z",
-        },
-    ],
-}
-
-MOCK_PERFORMANCE = {
-    1: [
-        {"date": "2026-04-01", "value": 124500.00, "gain": 24500.00, "gain_percent": 24.50},
-        {"date": "2026-04-02", "value": 125100.00, "gain": 25100.00, "gain_percent": 25.10},
-        {"date": "2026-04-03", "value": 125300.00, "gain": 25300.00, "gain_percent": 25.30},
-        {"date": "2026-04-04", "value": 125600.00, "gain": 25600.00, "gain_percent": 25.60},
-        {"date": "2026-04-05", "value": 125750.00, "gain": 25750.00, "gain_percent": 25.75},
-    ],
-    2: [
-        {"date": "2026-04-01", "value": 81800.00, "gain": 6800.00, "gain_percent": 9.07},
-        {"date": "2026-04-02", "value": 82000.00, "gain": 7000.00, "gain_percent": 9.33},
-        {"date": "2026-04-03", "value": 82150.00, "gain": 7150.00, "gain_percent": 9.53},
-        {"date": "2026-04-04", "value": 82250.00, "gain": 7250.00, "gain_percent": 9.67},
-        {"date": "2026-04-05", "value": 82300.00, "gain": 7300.00, "gain_percent": 9.73},
-    ],
-}
-
-MOCK_ALLOCATIONS = {
-    1: [
-        {"ticker": "AAPL", "value": 18025.00, "percentage": 14.33, "sector": "Technology"},
-        {"ticker": "GOOGL", "value": 28600.00, "percentage": 22.74, "sector": "Technology"},
-        {"ticker": "MSFT", "value": 58821.00, "percentage": 46.77, "sector": "Technology"},
-        {"ticker": "CASH", "value": 20304.00, "percentage": 16.16, "sector": "Cash"},
-    ],
-    2: [
-        {"ticker": "JPM", "value": 26775.00, "percentage": 32.54, "sector": "Financial"},
-        {"ticker": "V", "value": 55525.00, "percentage": 67.46, "sector": "Financial"},
-    ],
-}
-
-# Counter for generating new IDs
-_next_holding_id = 300
-
 
 @router.get("/{id}", response_model=None)
-async def get_portfolio(id: int) -> JSONResponse:
+async def get_portfolio(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
     """Get portfolio details by ID."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    portfolio = MOCK_PORTFOLIOS[id]
+    # Calculate portfolio totals from holdings
+    holdings = (
+        db.query(Holding)
+        .filter(Holding.portfolio_id == id)
+        .options(joinedload(Holding.ticker))
+        .all()
+    )
+
+    total_value = 0.0
+    total_cost = 0.0
+
+    for holding in holdings:
+        # Mock current price (in real implementation, fetch from price service)
+        current_price = 180.25  # Mock price
+        total_cost += holding.quantity * holding.avg_cost_basis
+        total_value += holding.quantity * current_price
+
+    total_gain = total_value - total_cost
+    total_gain_percent = (total_gain / total_cost * 100) if total_cost > 0 else 0.0
+
+    portfolio_data = {
+        "id": str(portfolio.id),
+        "name": portfolio.name,
+        "owner": portfolio.owner,
+        "description": None,  # Add description field to model if needed
+        "created_at": portfolio.created_at.isoformat() + "Z",
+        "updated_at": portfolio.created_at.isoformat() + "Z",  # Add updated_at field if needed
+        "total_value": round(total_value, 2),
+        "total_cost": round(total_cost, 2),
+        "total_gain": round(total_gain, 2),
+        "total_gain_percent": round(total_gain_percent, 2),
+    }
+
     response = success_response(
-        data=portfolio,
+        data=portfolio_data,
         message=f"Portfolio {id} retrieved successfully",
     )
     return JSONResponse(content=response, status_code=status.HTTP_200_OK)
 
 
 @router.get("/{id}/holdings", response_model=None)
-async def get_holdings(id: int) -> JSONResponse:
+async def get_holdings(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
     """Get all holdings for a portfolio."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    holdings = MOCK_HOLDINGS.get(id, [])
+    holdings = (
+        db.query(Holding)
+        .filter(Holding.portfolio_id == id)
+        .options(joinedload(Holding.ticker))
+        .all()
+    )
+
+    holdings_data = []
+    total_value = 0.0
+    total_cost = 0.0
+
+    for holding in holdings:
+        # Mock current price (in real implementation, fetch from price service)
+        current_price = 180.25  # Mock price
+        total_cost_holding = holding.quantity * holding.avg_cost_basis
+        total_value_holding = holding.quantity * current_price
+        gain = total_value_holding - total_cost_holding
+        gain_percent = (gain / total_cost_holding * 100) if total_cost_holding > 0 else 0.0
+
+        total_value += total_value_holding
+        total_cost += total_cost_holding
+
+        holdings_data.append(
+            {
+                "id": str(holding.id),
+                "portfolio_id": str(holding.portfolio_id),
+                "ticker": {
+                    "symbol": holding.ticker.symbol,
+                    "name": holding.ticker.company_name,
+                },
+                "quantity": holding.quantity,
+                "avg_cost_basis": holding.avg_cost_basis,
+                "current_price": current_price,
+                "total_cost": round(total_cost_holding, 2),
+                "total_value": round(total_value_holding, 2),
+                "gain": round(gain, 2),
+                "gain_percent": round(gain_percent, 2),
+                "purchased_at": holding.opened_at.isoformat() + "Z",
+                "updated_at": holding.opened_at.isoformat() + "Z",
+            }
+        )
+
     metadata = {
-        "portfolio_id": id,
-        "count": len(holdings),
-        "total_value": sum(h["total_value"] for h in holdings),
-        "total_cost": sum(h["total_cost"] for h in holdings),
+        "portfolio_id": str(id),
+        "count": len(holdings_data),
+        "total_value": round(total_value, 2),
+        "total_cost": round(total_cost, 2),
     }
 
     response = success_response(
-        data=holdings,
+        data=holdings_data,
         message=f"Holdings for portfolio {id} retrieved successfully",
         metadata=metadata,
     )
@@ -259,31 +205,23 @@ async def get_holdings(id: int) -> JSONResponse:
 
 @router.get("/{id}/performance", response_model=None)
 async def get_performance(
-    id: int,
+    id: UUID,
     from_date: date | None = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
     to_date: date | None = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Get portfolio performance metrics over a date range."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    performance = MOCK_PERFORMANCE.get(id, [])
-
-    # Filter by date range if provided
-    if from_date or to_date:
-        filtered_performance = []
-        for metric in performance:
-            metric_date = datetime.strptime(str(metric["date"]), "%Y-%m-%d").date()
-            if from_date and metric_date < from_date:
-                continue
-            if to_date and metric_date > to_date:
-                continue
-            filtered_performance.append(metric)
-        performance = filtered_performance
+    # Mock performance data (in real implementation, query PerformanceSnapshot table)
+    performance: list[dict] = []
 
     metadata = {
-        "portfolio_id": id,
+        "portfolio_id": str(id),
         "from": from_date.isoformat() if from_date else None,
         "to": to_date.isoformat() if to_date else None,
         "count": len(performance),
@@ -298,18 +236,47 @@ async def get_performance(
 
 
 @router.get("/{id}/allocation", response_model=None)
-async def get_allocation(id: int) -> JSONResponse:
+async def get_allocation(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
     """Get portfolio allocation breakdown."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    allocation = MOCK_ALLOCATIONS.get(id, [])
-    total_value = sum(cast(float, item["value"]) for item in allocation)
+    holdings = (
+        db.query(Holding)
+        .filter(Holding.portfolio_id == id)
+        .options(joinedload(Holding.ticker))
+        .all()
+    )
+
+    allocation = []
+    total_value = 0.0
+
+    for holding in holdings:
+        current_price = 180.25  # Mock price
+        value = holding.quantity * current_price
+        total_value += value
+
+        allocation.append(
+            {
+                "ticker": holding.ticker.symbol,
+                "value": value,
+                "sector": holding.ticker.sector,
+            }
+        )
+
+    # Calculate percentages
+    for item in allocation:
+        item["percentage"] = round(
+            (item["value"] / total_value * 100) if total_value > 0 else 0.0, 2
+        )
+        item["value"] = round(item["value"], 2)
 
     metadata = {
-        "portfolio_id": id,
-        "total_value": total_value,
+        "portfolio_id": str(id),
+        "total_value": round(total_value, 2),
         "item_count": len(allocation),
     }
 
@@ -322,42 +289,66 @@ async def get_allocation(id: int) -> JSONResponse:
 
 
 @router.post("/{id}/holdings", response_model=None)
-async def create_holding(id: int, holding: HoldingCreate = Body(...)) -> JSONResponse:
+async def create_holding(
+    id: UUID, holding: HoldingCreate = Body(...), db: Session = Depends(get_db)
+) -> JSONResponse:
     """Add a new holding to the portfolio."""
-    global _next_holding_id
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
 
-    if id not in MOCK_PORTFOLIOS:
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    # Calculate derived values
-    total_cost = holding.quantity * holding.average_cost
-    current_price = 180.25  # Mock current price
-    total_value = holding.quantity * current_price
+    # Find ticker
+    ticker = db.query(Ticker).filter(Ticker.symbol == holding.ticker.upper()).first()
+
+    if not ticker:
+        response = not_found_response("Ticker", holding.ticker.upper())
+        return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
+
+    # Create holding
+    purchased_at = (
+        datetime.fromisoformat(holding.purchased_at.replace("Z", ""))
+        if holding.purchased_at
+        else datetime.now()
+    )
+
+    new_holding = Holding(
+        portfolio_id=id,
+        ticker_id=ticker.id,
+        quantity=holding.quantity,
+        avg_cost_basis=holding.average_cost,
+        opened_at=purchased_at,
+    )
+
+    db.add(new_holding)
+    db.commit()
+    db.refresh(new_holding)
+
+    # Calculate values
+    current_price = 180.25  # Mock price
+    total_cost = new_holding.quantity * new_holding.avg_cost_basis
+    total_value = new_holding.quantity * current_price
     gain = total_value - total_cost
-    gain_percent = (gain / total_cost) * 100 if total_cost > 0 else 0.0
+    gain_percent = (gain / total_cost * 100) if total_cost > 0 else 0.0
 
-    new_holding = {
-        "id": _next_holding_id,
-        "portfolio_id": id,
-        "ticker": holding.ticker.upper(),
-        "quantity": holding.quantity,
-        "average_cost": holding.average_cost,
+    holding_data = {
+        "id": str(new_holding.id),
+        "portfolio_id": str(new_holding.portfolio_id),
+        "ticker": {
+            "symbol": ticker.symbol,
+            "name": ticker.company_name,
+        },
+        "quantity": new_holding.quantity,
+        "avg_cost_basis": new_holding.avg_cost_basis,
         "current_price": current_price,
-        "total_cost": total_cost,
-        "total_value": total_value,
-        "gain": gain,
-        "gain_percent": gain_percent,
-        "purchased_at": holding.purchased_at or datetime.now().isoformat() + "Z",
-        "updated_at": datetime.now().isoformat() + "Z",
+        "total_cost": round(total_cost, 2),
+        "total_value": round(total_value, 2),
+        "gain": round(gain, 2),
+        "gain_percent": round(gain_percent, 2),
+        "purchased_at": new_holding.opened_at.isoformat() + "Z",
+        "updated_at": new_holding.opened_at.isoformat() + "Z",
     }
-
-    # Add to mock data
-    if id not in MOCK_HOLDINGS:
-        MOCK_HOLDINGS[id] = []
-    MOCK_HOLDINGS[id].append(new_holding)
-
-    _next_holding_id += 1
 
     # Invalidate caches
     cache = get_cache_service()
@@ -367,7 +358,7 @@ async def create_holding(id: int, holding: HoldingCreate = Body(...)) -> JSONRes
     cache.delete(f"portfolio:{id}")
 
     response = success_response(
-        data=new_holding,
+        data=holding_data,
         message=f"Holding created successfully in portfolio {id}",
     )
     return JSONResponse(content=response, status_code=status.HTTP_201_CREATED)
@@ -375,15 +366,21 @@ async def create_holding(id: int, holding: HoldingCreate = Body(...)) -> JSONRes
 
 @router.put("/{id}/holdings/{hid}", response_model=None)
 async def update_holding(
-    id: int, hid: int, holding_update: HoldingUpdate = Body(...)
+    id: UUID, hid: UUID, holding_update: HoldingUpdate = Body(...), db: Session = Depends(get_db)
 ) -> JSONResponse:
     """Update an existing holding."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    holdings = MOCK_HOLDINGS.get(id, [])
-    holding = next((h for h in holdings if h["id"] == hid), None)
+    holding = (
+        db.query(Holding)
+        .filter(Holding.id == hid, Holding.portfolio_id == id)
+        .options(joinedload(Holding.ticker))
+        .first()
+    )
 
     if not holding:
         response = not_found_response("Holding", str(hid))
@@ -391,18 +388,37 @@ async def update_holding(
 
     # Update fields
     if holding_update.quantity is not None:
-        holding["quantity"] = holding_update.quantity
+        holding.quantity = holding_update.quantity
     if holding_update.average_cost is not None:
-        holding["average_cost"] = holding_update.average_cost
+        holding.avg_cost_basis = holding_update.average_cost
 
-    # Recalculate derived values
-    holding["total_cost"] = holding["quantity"] * holding["average_cost"]
-    holding["total_value"] = holding["quantity"] * holding["current_price"]
-    holding["gain"] = holding["total_value"] - holding["total_cost"]
-    holding["gain_percent"] = (
-        (holding["gain"] / holding["total_cost"]) * 100 if holding["total_cost"] > 0 else 0.0
-    )
-    holding["updated_at"] = datetime.now().isoformat() + "Z"
+    db.commit()
+    db.refresh(holding)
+
+    # Calculate values
+    current_price = 180.25  # Mock price
+    total_cost = holding.quantity * holding.avg_cost_basis
+    total_value = holding.quantity * current_price
+    gain = total_value - total_cost
+    gain_percent = (gain / total_cost * 100) if total_cost > 0 else 0.0
+
+    holding_data = {
+        "id": str(holding.id),
+        "portfolio_id": str(holding.portfolio_id),
+        "ticker": {
+            "symbol": holding.ticker.symbol,
+            "name": holding.ticker.company_name,
+        },
+        "quantity": holding.quantity,
+        "avg_cost_basis": holding.avg_cost_basis,
+        "current_price": current_price,
+        "total_cost": round(total_cost, 2),
+        "total_value": round(total_value, 2),
+        "gain": round(gain, 2),
+        "gain_percent": round(gain_percent, 2),
+        "purchased_at": holding.opened_at.isoformat() + "Z",
+        "updated_at": holding.opened_at.isoformat() + "Z",
+    }
 
     # Invalidate caches
     cache = get_cache_service()
@@ -412,28 +428,29 @@ async def update_holding(
     cache.delete(f"portfolio:{id}")
 
     response = success_response(
-        data=holding,
+        data=holding_data,
         message=f"Holding {hid} updated successfully",
     )
     return JSONResponse(content=response, status_code=status.HTTP_200_OK)
 
 
 @router.delete("/{id}/holdings/{hid}", response_model=None)
-async def delete_holding(id: int, hid: int) -> JSONResponse:
+async def delete_holding(id: UUID, hid: UUID, db: Session = Depends(get_db)) -> JSONResponse:
     """Delete a holding from the portfolio."""
-    if id not in MOCK_PORTFOLIOS:
+    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+
+    if not portfolio:
         response = not_found_response("Portfolio", str(id))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    holdings = MOCK_HOLDINGS.get(id, [])
-    holding = next((h for h in holdings if h["id"] == hid), None)
+    holding = db.query(Holding).filter(Holding.id == hid, Holding.portfolio_id == id).first()
 
     if not holding:
         response = not_found_response("Holding", str(hid))
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
-    # Remove holding
-    MOCK_HOLDINGS[id] = [h for h in holdings if h["id"] != hid]
+    db.delete(holding)
+    db.commit()
 
     # Invalidate caches
     cache = get_cache_service()
@@ -443,7 +460,7 @@ async def delete_holding(id: int, hid: int) -> JSONResponse:
     cache.delete(f"portfolio:{id}")
 
     response = success_response(
-        data={"id": hid, "deleted": True},
+        data={"id": str(hid), "deleted": True},
         message=f"Holding {hid} deleted successfully",
     )
     return JSONResponse(content=response, status_code=status.HTTP_200_OK)
