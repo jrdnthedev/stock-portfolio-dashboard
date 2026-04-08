@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from backend.database.models import PricePoint, Ticker
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def market_tickers(db_session: Session) -> list[Ticker]:
