@@ -1,6 +1,6 @@
 # Integration Tests
 
-This directory contains integration tests for the Stock Portfolio Dashboard API using **testcontainers** to provide isolated, reproducible test environments. # noqa E999
+This directory contains integration tests for the Stock Portfolio Dashboard API using **testcontainers** to provide isolated, reproducible test environments. #noqa E999
 
 ## Overview
 
@@ -10,6 +10,14 @@ The integration tests use **testcontainers-python** to automatically spin up a P
 - **Reproducibility**: Tests run in the same environment everywhere
 - **Real Integration**: Tests use actual database interactions, not mocks
 - **Fast Cleanup**: Containers are automatically removed after tests
+- **No Docker Dependency for Unit Tests**: Integration tests only run when Docker is available
+
+## Current Status
+
+✅ **315 Total Tests**: 270 unit tests + 45 integration tests
+- Unit tests run without Docker (mocked dependencies)
+- Integration tests require Docker running
+- Tests automatically skip if Docker unavailable
 
 ## Prerequisites
 
@@ -18,6 +26,7 @@ Before running the integration tests, ensure you have:
 1. **Docker** installed and running
    - [Docker Desktop](https://www.docker.com/products/docker-desktop/) for Windows/macOS
    - Docker Engine for Linux
+   - **Note**: Integration tests will be automatically skipped if Docker is not available
 
 2. **Python 3.11+** with dependencies installed:
    ```powershell
@@ -28,12 +37,13 @@ Before running the integration tests, ensure you have:
 
 ```
 tests/
-├── conftest_integration.py        # testcontainers configuration
-├── integration_test_portfolio.py  # Portfolio endpoint integration tests
-├── integration_test_market.py     # Market data endpoint integration tests
-├── conftest.py                    # General pytest configuration
-├── test_*.py                      # Unit tests (existing)
+├── conftest.py                    # Pytest configuration with test app (no Kafka/Redis)
+├── integration_test_portfolio.py  # Portfolio endpoint integration tests (22 tests)
+├── integration_test_market.py     # Market data endpoint integration tests (23 tests)
+├── test_*.py                      # Unit tests (270 tests)
 ```
+
+**Note**: The `conftest_integration.py` file has been removed. All test configuration is now in `conftest.py`.
 
 ## Running Integration Tests
 
@@ -165,39 +175,83 @@ pytest tests/integration_test_*.py -n auto
 
 ### Session-Scoped Fixtures
 
-- `postgres_container`: PostgreSQL testcontainer (persists for all tests)
+- `postgres_container`: PostgreSQL testcontainer (persists for all integration tests)
 - `test_engine`: SQLAlchemy engine connected to test database
+- `test_lifespan`: No-op async context manager (replaces main app lifespan to avoid Kafka/Redis dependencies)
 
 ### Function-Scoped Fixtures
 
-- `db_session`: Fresh database session for each test (auto-rollback)
-- `client`: FastAPI TestClient with database dependency override
-- `disable_cache`: Mock cache service to avoid Redis dependency
+- `db_session`: Fresh database session for each test (auto-rollback after test)
+- `client`: FastAPI TestClient with:
+  - Test-specific lifespan handler (no background services)
+  - Database dependency override pointing to test database
+  - All routes registered (market, portfolio, websocket)
+- `disable_cache`: Mock cache service (returns None on get, no-op on set/delete)
 
 ### Data Fixtures
 
-- `sample_tickers`: Pre-populated ticker data
-- `sample_portfolio`: Pre-populated portfolio
-- `sample_holdings`: Pre-populated holdings
-- `market_tickers`: Market data tickers
-- `sample_price_data`: Historical price data
+- `sample_tickers`: Pre-populated ticker data with sectors and exchanges
+- `sample_portfolio`: Pre-populated portfolio (portfolio_id=1)
+- `sample_holdings`: Pre-populated holdings linked to portfolio
+- `market_tickers`: Market data tickers for market endpoint tests
+- `sample_price_data`: Historical price data for date range filtering tests
 
 ## Architecture
 
-### Testcontainers Configuration
+### Test App Configuration
 
-The `conftest_integration.py` file configures testcontainers using pytest fixtures:
+The `conftest.py` file creates a test-specific FastAPI app:
 
-1. **Container Lifecycle**: PostgreSQL container starts once per test session
-2. **Schema Creation**: Tables are created from SQLAlchemy models
-3. **Transaction Management**: Each test runs in a transaction that's rolled back
-4. **Dependency Override**: FastAPI's `get_db` dependency is overridden with test session
+```python
+@pytest.fixture
+def test_lifespan():
+    """No-op lifespan for tests - avoids starting Kafka/Redis background services."""
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        yield
+    return _lifespan
 
-### Test Isolation
+@pytest.fixture
+def client(test_lifespan, db_session):
+    """FastAPI test client with database override."""
+    # Create test app with no-op lifespan
+    test_app = FastAPI(lifespan=test_lifespan)
 
-Each test function:
-1. Gets a fresh database session
-2. Uses a transaction that's rolled back after the test
+    # Add middleware
+    test_app.add_middleware(RequestLoggingMiddleware)
+
+    # Include all routers
+    test_app.include_router(market_router)
+    test_app.include_router(portfolio_router)
+    test_app.include_router(websocket_router)
+
+    # Override database dependency
+    test_app.dependency_overrides[get_db] = lambda: db_session
+
+    return TestClient(test_app)
+```
+
+**Key Design Decisions**:
+1. **Separate test app**: Avoids starting PricePublisher and PriceEventConsumer
+2. **No Kafka/Redis required**: Tests focus on HTTP endpoints and database
+3. **Dependency injection**: Database sessions scoped to each test
+4. **Automatic rollback**: Each test transaction is rolled back
+
+### Container Lifecycle
+
+1. **Startup** (once per session):
+   - PostgreSQL testcontainer starts
+   - SQLAlchemy engine connects to container
+   - Database schemas created from models
+
+2. **Per Test**:
+   - New database session with transaction
+   - Test executes with isolated data
+   - Transaction rolled back (cleanup)
+
+3. **Shutdown** (end of session):
+   - PostgreSQL container stopped and removed
+   - Temporary volumes cleaned up
 3. Ensures no data persistence between tests
 4. Avoids test interdependencies
 

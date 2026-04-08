@@ -319,51 +319,90 @@ class FundamentalsAdapter:
 
 **Location**: `market_data/service/price_publisher.py`
 
-**Purpose**: Publishes price updates to Kafka for real-time distribution.
+**Purpose**: Background service that generates mock price events and publishes to Kafka every 5 seconds.
 
-**Interface**:
+**Implementation**:
 
 ```python
 class PricePublisher:
-    """Publishes price updates to Kafka."""
+    """Background service for publishing mock price updates."""
 
-    def __init__(self, bootstrap_servers: str, topic_prefix: str):
-        self.producer = KafkaProducer(
-            bootstrap_servers=bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        )
-        self.topic_prefix = topic_prefix
+    def __init__(
+        self,
+        kafka_bootstrap_servers: list[str],
+        topic: str,
+        interval_sec: float = 5.0
+    ):
+        self.kafka_servers = kafka_bootstrap_servers
+        self.topic = topic  # 'market.prices.live'
+        self.interval_sec = interval_sec
+        self.pricing_adapter = PricingAdapter(kafka_servers, topic)
+        self.running = threading.Event()
+        self.thread: threading.Thread | None = None
 
-    async def publish_price(self, price: Price) -> None:
+    def start(self, ticker_ids: list[int], start_date: str) -> None:
         """
-        Publish price update to Kafka.
+        Start background publishing loop.
 
-        Topic: {topic_prefix}.prices.{ticker}
-        Key: ticker (for partitioning)
-        Value: Price JSON
+        Flow:
+        1. Spawn daemon thread
+        2. Loop every interval_sec seconds
+        3. Generate mock OHLCV for each ticker
+        4. Publish PriceUpdated event to Kafka
+        5. Continue until stop() called
         """
-        topic = f"{self.topic_prefix}.prices.{price.ticker}"
+        if self.thread and self.thread.is_alive():
+            logger.warning("PricePublisher already running")
+            return
 
-        self.producer.send(
-            topic,
-            key=price.ticker.encode('utf-8'),
-            value=price.dict()
+        self.running.set()
+        self.thread = threading.Thread(
+            target=self._publish_loop,
+            args=(ticker_ids, start_date),
+            daemon=True
         )
+        self.thread.start()
+        logger.info(f"PricePublisher started for {len(ticker_ids)} tickers")
 
-        self.producer.flush()
-        logger.info(f"Published price for {price.ticker} to {topic}")
+    def _publish_loop(self, ticker_ids: list[int], start_date: str) -> None:
+        """Background loop that publishes prices."""
+        while self.running.is_set():
+            for ticker_id in ticker_ids:
+                self.pricing_adapter.generate_mock_ohlcv(
+                    ticker_id=ticker_id,
+                    start_date=start_date,
+                    is_live=True  # Generate single data point
+                )
+            time.sleep(self.interval_sec)
 
-    def close(self):
-        """Close Kafka producer."""
-        self.producer.close()
+    def stop(self) -> None:
+        """Stop publishing and cleanup resources."""
+        self.running.clear()
+        if self.thread:
+            self.thread.join(timeout=2)
+        logger.info("PricePublisher stopped")
 ```
 
-**Topics**:
-- `market-data.prices.AAPL` - AAPL price updates
-- `market-data.prices.GOOGL` - GOOGL price updates
-- etc.
+**Integration**: Started in `main.py` lifespan handler for ticker IDs 1-20.
 
-**Testing**: `backend/tests/test_price_publisher.py`
+**Kafka Topic**: `market.prices.live`
+**Message Format**:
+```json
+{
+  "event": "PriceUpdated",
+  "data": {
+    "ticker_id": 1,
+    "date": "2026-04-07",
+    "open": 150.25,
+    "high": 152.80,
+    "low": 149.50,
+    "close": 151.75,
+    "volume": 1250000
+  }
+}
+```
+
+**Testing**: `backend/tests/test_price_publisher.py` and `backend/tests/test_pricing_adapter.py`
 
 ---
 
@@ -455,129 +494,114 @@ class PortfolioSnapshot(BaseModel):
 
 **Location**: `portfolio/services/portfolio_service.py`
 
-**Purpose**: CRUD operations for portfolios and holdings.
+**Purpose**: CRUD operations for portfolios and holdings with Kafka event publishing.
 
 **Key Methods**:
 
 ```python
 class PortfolioService:
-    """Manages portfolio operations."""
+    """Manages portfolio operations with event publishing."""
 
-    def __init__(self, db_session: Session, cache: CacheService):
-        self.db = db_session
-        self.cache = cache
-
-    async def create_portfolio(
+    def __init__(
         self,
-        user_id: int,
-        name: str,
-        description: Optional[str] = None
-    ) -> Portfolio:
-        """Create a new portfolio."""
-        portfolio = Portfolio(
-            user_id=user_id,
-            name=name,
-            description=description,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC)
+        kafka_bootstrap_servers: list[str],
+        topic: str = "portfolio.holdings.changed"
+    ):
+        # Kafka producer for portfolio events
+        self.producer = KafkaProducer(
+            bootstrap_servers=kafka_bootstrap_servers,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
+        self.topic = topic
 
-        self.db.add(portfolio)
-        self.db.commit()
-        self.db.refresh(portfolio)
-
-        # Invalidate user's portfolio list cache
-        await self.cache.delete(f"portfolios:user:{user_id}")
-
-        return portfolio
-
-    async def add_holding(
+    def add_holding(
         self,
+        db: Session,
         portfolio_id: int,
-        ticker: str,
-        quantity: Decimal,
-        average_cost: Decimal
+        ticker_id: int,
+        quantity: int,
+        average_cost: float
     ) -> Holding:
         """
         Add a holding to a portfolio.
 
-        Business Rules:
-        - Quantity must be positive
-        - Average cost must be positive
-        - Ticker must exist in market data
-        - Portfolio must exist and belong to user
+        Flow:
+        1. Validate portfolio exists
+        2. Create holding in database
+        3. Publish HoldingAdded event to Kafka
+        4. Return created holding
         """
-        # Validate portfolio exists
-        portfolio = self.db.query(Portfolio).filter_by(id=portfolio_id).first()
-        if not portfolio:
-            raise PortfolioNotFoundError(f"Portfolio {portfolio_id} not found")
-
-        # Create holding
         holding = Holding(
             portfolio_id=portfolio_id,
-            ticker=ticker.upper(),
+            ticker_id=ticker_id,
             quantity=quantity,
-            average_cost=average_cost,
-            purchased_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC)
+            average_cost=average_cost
         )
+        db.add(holding)
+        db.commit()
+        db.refresh(holding)
 
-        self.db.add(holding)
-
-        # Update portfolio timestamp
-        portfolio.updated_at = datetime.now(UTC)
-
-        self.db.commit()
-        self.db.refresh(holding)
-
-        # Invalidate caches
-        await self.cache.delete(f"portfolio:{portfolio_id}:holdings")
-        await self.cache.delete(f"portfolio:{portfolio_id}:performance")
+        # Publish event
+        self._publish_event({
+            "event": "HoldingAdded",
+            "portfolio_id": portfolio_id,
+            "ticker_id": ticker_id,
+            "quantity": quantity,
+            "average_cost": average_cost
+        })
 
         return holding
 
-    async def update_holding(
+    def update_holding(
         self,
+        db: Session,
         holding_id: int,
-        quantity: Optional[Decimal] = None,
-        average_cost: Optional[Decimal] = None
+        quantity: int | None = None,
+        average_cost: float | None = None
     ) -> Holding:
-        """Update an existing holding."""
-        holding = self.db.query(Holding).filter_by(id=holding_id).first()
-        if not holding:
-            raise HoldingNotFoundError(f"Holding {holding_id} not found")
+        """Update holding with event publishing."""
+        # Update database and publish HoldingUpdated event
+        pass
 
-        if quantity is not None:
-            holding.quantity = quantity
-        if average_cost is not None:
-            holding.average_cost = average_cost
+    def delete_holding(self, db: Session, holding_id: int) -> None:
+        """Delete holding with event publishing."""
+        # Delete from database and publish HoldingDeleted event
+        pass
 
-        holding.updated_at = datetime.now(UTC)
+    def get_portfolios_by_ticker(self, ticker_id: int) -> list[int]:
+        """
+        Find all portfolio IDs that contain a specific ticker.
 
-        self.db.commit()
-        self.db.refresh(holding)
+        Used by PortfolioPerformanceOrchestrator to determine
+        which portfolios need recalculation when a price updates.
+        """
+        # Query database for portfolios with this ticker
+        pass
 
-        # Invalidate caches
-        await self.cache.delete(f"portfolio:{holding.portfolio_id}:holdings")
-        await self.cache.delete(f"portfolio:{holding.portfolio_id}:performance")
+    def get_holdings_for_calculation(
+        self,
+        portfolio_id: int
+    ) -> list[tuple[int, Decimal, Decimal, str | None]]:
+        """
+        Get holdings formatted for PerformanceCalculator.
 
-        return holding
+        Returns: List of (ticker_id, quantity, average_cost, sector)
+        """
+        # Query and format holdings data
+        pass
 
-    async def delete_holding(self, holding_id: int) -> None:
-        """Remove a holding from portfolio."""
-        holding = self.db.query(Holding).filter_by(id=holding_id).first()
-        if not holding:
-            raise HoldingNotFoundError(f"Holding {holding_id} not found")
-
-        portfolio_id = holding.portfolio_id
-
-        self.db.delete(holding)
-        self.db.commit()
-
-        # Invalidate caches
-        await self.cache.delete(f"portfolio:{portfolio_id}:holdings")
-        await self.cache.delete(f"portfolio:{portfolio_id}:performance")
+    def _publish_event(self, event: dict) -> None:
+        """Publish event to Kafka topic."""
+        self.producer.send(self.topic, value=event)
+        self.producer.flush()
 ```
+
+**Kafka Integration**:
+- **Topic**: `portfolio.holdings.changed`
+- **Events**: `HoldingAdded`, `HoldingUpdated`, `HoldingDeleted`
+- **Purpose**: Notify other services of portfolio changes
+
+**Cache Invalidation**: Portfolio mutation methods invalidate relevant Redis caches.
 
 **Testing**: `backend/tests/test_portfolio_service.py`
 
@@ -587,91 +611,111 @@ class PortfolioService:
 
 **Location**: `portfolio/services/performance_calculator.py`
 
-**Purpose**: Calculates portfolio performance metrics.
+**Purpose**: Calculates real-time portfolio and holding performance metrics without database dependencies.
 
-**Key Calculations**:
+**Implementation**:
 
 ```python
 class PerformanceCalculator:
-    """Calculates portfolio performance metrics."""
+    """In-memory performance calculation engine."""
 
-    def __init__(
+    def __init__(self):
+        # In-memory price cache: {ticker_id: Decimal}
+        self.prices: dict[int, Decimal] = {}
+
+    def update_price(self, ticker_id: int, price: Decimal) -> None:
+        """Update cached price for a ticker."""
+        self.prices[ticker_id] = price
+        logger.debug(f"Updated price for ticker {ticker_id}: {price}")
+
+    def calculate_holding_performance(
         self,
-        market_data_service: MarketDataService,
-        db_session: Session
-    ):
-        self.market_data = market_data_service
-        self.db = db_session
-
-    async def calculate_portfolio_performance(
-        self,
-        portfolio_id: int
-    ) -> PerformanceMetrics:
+        ticker_id: int,
+        quantity: Decimal,
+        average_cost: Decimal,
+        total_portfolio_value: Decimal
+    ) -> dict[str, Any]:
         """
-        Calculate current portfolio performance.
+        Calculate performance for a single holding.
 
-        Metrics:
-        - Total Value: Sum of (quantity × current_price) for all holdings
-        - Total Cost: Sum of (quantity × average_cost) for all holdings
-        - Unrealized Gain: Total Value - Total Cost
-        - Total Return %: (Unrealized Gain / Total Cost) × 100
+        Returns:
+        - market_value: quantity × current_price
+        - unrealized_pnl: (current_price - average_cost) × quantity
+        - unrealized_pnl_percent: (unrealized_pnl / cost_basis) × 100
+        - weight: (market_value / total_portfolio_value) × 100
         """
-        holdings = self.db.query(Holding).filter_by(
-            portfolio_id=portfolio_id
-        ).all()
-
-        total_value = Decimal(0)
-        total_cost = Decimal(0)
-
-        for holding in holdings:
-            # Fetch current price
-            current_price = await self.market_data.get_latest_price(
-                holding.ticker
-            )
-
-            # Calculate holding value
-            holding_value = holding.quantity * current_price.close
-            holding_cost = holding.quantity * holding.average_cost
-
-            total_value += holding_value
-            total_cost += holding_cost
-
-        unrealized_gain = total_value - total_cost
-        total_return_percent = (
-            (unrealized_gain / total_cost * 100)
-            if total_cost > 0
-            else Decimal(0)
+        current_price = self.prices.get(ticker_id, Decimal('0'))
+        cost_basis = quantity * average_cost
+        market_value = quantity * current_price
+        unrealized_pnl = market_value - cost_basis
+        unrealized_pnl_percent = (
+            (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else Decimal('0')
+        )
+        weight = (
+            (market_value / total_portfolio_value * 100)
+            if total_portfolio_value > 0
+            else Decimal('0')
         )
 
-        return PerformanceMetrics(
-            portfolio_id=portfolio_id,
-            total_value=total_value,
-            total_cost=total_cost,
-            realized_gain=Decimal(0),  # TODO: Track realized gains
-            unrealized_gain=unrealized_gain,
-            total_gain=unrealized_gain,
-            total_return_percent=total_return_percent,
-            time_weighted_return=Decimal(0),  # TODO: Implement TWR
-            calculated_at=datetime.now(UTC)
+        return {
+            "ticker_id": ticker_id,
+            "quantity": float(quantity),
+            "average_cost": float(average_cost),
+            "current_price": float(current_price),
+            "market_value": float(market_value),
+            "unrealized_pnl": float(unrealized_pnl),
+            "unrealized_pnl_percent": float(unrealized_pnl_percent),
+            "weight": float(weight),
+        }
+
+    def calculate_portfolio_performance(
+        self,
+        holdings: list[tuple[int, Decimal, Decimal, str | None]]  # (ticker_id, qty, avg_cost, sector)
+    ) -> dict[str, Any]:
+        """
+        Calculate portfolio-level performance.
+
+        Returns:
+        - total_market_value: Sum of all holding market values
+        - total_unrealized_pnl: Sum of all unrealized P&L
+        - total_unrealized_pnl_percent: Overall portfolio return %
+        - holdings: Array of holding performance metrics
+        - sector_allocation: Breakdown by sector
+        """
+        # First pass: calculate total portfolio value
+        total_value = sum(
+            qty * self.prices.get(tid, Decimal('0'))
+            for tid, qty, _, _ in holdings
         )
 
-    def calculate_time_weighted_return(
-        self,
-        portfolio_id: int,
-        start_date: date,
-        end_date: date
-    ) -> Decimal:
-        """
-        Calculate time-weighted return (TWR).
+        # Second pass: calculate holding metrics with weights
+        holding_performances = [
+            self.calculate_holding_performance(tid, qty, avg_cost, total_value)
+            for tid, qty, avg_cost, _ in holdings
+        ]
 
-        Formula: TWR = [(1 + r1) × (1 + r2) × ... × (1 + rn)] - 1
+        # Calculate totals
+        total_cost = sum(float(h["quantity"]) * float(h["average_cost"]) for h in holding_performances)
+        total_pnl = sum(float(h["unrealized_pnl"]) for h in holding_performances)
+        total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0.0
 
-        Where ri = (Ending Value - Beginning Value - Cash Flows) /
-                   (Beginning Value + Cash Flows)
-        """
-        # Implementation requires portfolio snapshots
-        pass
+        # Sector allocation
+        sector_allocation = self._calculate_sector_allocation(holdings, holding_performances)
+
+        return {
+            "total_market_value": float(total_value),
+            "total_unrealized_pnl": total_pnl,
+            "total_unrealized_pnl_percent": total_pnl_pct,
+            "holdings": holding_performances,
+            "sector_allocation": sector_allocation,
+        }
 ```
+
+**Key Features**:
+- **In-memory price cache**: No database queries for price lookups
+- **Real-time calculation**: Instant P&L updates when prices change
+- **Sector allocation**: Automatic grouping by sector with weights
+- **Percentage calculations**: Returns, weights, sector allocations
 
 **Testing**: `backend/tests/test_performance_calculator.py`
 
@@ -747,87 +791,292 @@ class SnapshotService:
 
 ---
 
-### 4. Price Event Consumer
+### 4. Price Event Consumer & Orchestrator
 
 **Location**: `portfolio/services/price_event_consumer.py`
 
-**Purpose**: Consumes price updates from Kafka and triggers portfolio recalculation.
+**Purpose**: Consumes price events from Kafka and orchestrates portfolio performance updates with WebSocket broadcasts.
 
-**Interface**:
+**Components**:
+
+#### PriceEventConsumer
 
 ```python
 class PriceEventConsumer:
-    """Consumes price updates and triggers portfolio updates."""
+    """Kafka consumer for price update events."""
 
     def __init__(
         self,
-        performance_calculator: PerformanceCalculator,
-        websocket_manager: WebSocketManager,
-        bootstrap_servers: str
+        kafka_bootstrap_servers: list[str],
+        topic: str,
+        group_id: str = "portfolio-performance-group"
     ):
-        self.calculator = performance_calculator
-        self.websocket = websocket_manager
         self.consumer = KafkaConsumer(
-            'market-data.prices.*',
-            bootstrap_servers=bootstrap_servers,
-            group_id='portfolio-updater',
-            value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+            topic,  # 'market.prices.live'
+            bootstrap_servers=kafka_bootstrap_servers,
+            group_id=group_id,
+            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+            auto_offset_reset='latest'
         )
+        self.callback: Callable[[dict], None] | None = None
+        self.running = threading.Event()
+        self.thread: threading.Thread | None = None
 
-    async def start(self):
-        """
-        Start consuming price events.
+    def set_callback(self, callback: Callable[[dict], None]) -> None:
+        """Register callback function to handle price events."""
+        self.callback = callback
 
-        Flow:
-        1. Receive price update from Kafka
-        2. Find portfolios containing this ticker
-        3. Recalculate portfolio performance
-        4. Broadcast update via WebSocket
-        """
+    def start(self) -> None:
+        """Start consuming events in background thread."""
+        self.running.set()
+        self.thread = threading.Thread(
+            target=self._consume_loop,
+            daemon=True
+        )
+        self.thread.start()
+
+    def _consume_loop(self) -> None:
+        """Background loop that processes Kafka messages."""
         for message in self.consumer:
-            price_data = message.value
-            ticker = price_data['ticker']
+            if not self.running.is_set():
+                break
 
-            # Find affected portfolios
-            portfolios = self.db.query(Portfolio).join(Holding).filter(
-                Holding.ticker == ticker
-            ).distinct().all()
+            event_data = message.value
+            if self.callback:
+                self.callback(event_data)
 
-            for portfolio in portfolios:
-                # Recalculate performance
-                performance = await self.calculator.calculate_portfolio_performance(
-                    portfolio.id
-                )
-
-                # Broadcast to WebSocket subscribers
-                await self.websocket.broadcast_to_topic(
-                    f"portfolio.{portfolio.id}",
-                    {
-                        "type": "portfolio.update",
-                        "data": performance.dict()
-                    }
-                )
+    def stop(self) -> None:
+        """Stop consumer and cleanup."""
+        self.running.clear()
+        self.consumer.close()
 ```
 
-**Consumer Group**: `portfolio-updater`
-**Topics**: `market-data.prices.*` (wildcard subscription)
+#### PortfolioPerformanceOrchestrator
 
-**Testing**: `backend/tests/test_price_event_consumer.py`
+```python
+class PortfolioPerformanceOrchestrator:
+    """Coordinates price updates with portfolio recalculation and WebSocket broadcasts."""
+
+    def __init__(
+        self,
+        portfolio_service: PortfolioService,
+        performance_calculator: PerformanceCalculator,
+        price_consumer: PriceEventConsumer,
+        websocket_publisher: Callable[[str, dict], None] | None = None
+    ):
+        self.portfolio_service = portfolio_service
+        self.calculator = performance_calculator
+        self.consumer = price_consumer
+        self.websocket_publisher = websocket_publisher
+
+        # Register callback
+        self.consumer.set_callback(self._on_price_updated)
+
+    def start(self) -> None:
+        """Start consuming price events."""
+        self.consumer.start()
+        logger.info("PortfolioPerformanceOrchestrator started")
+
+    def stop(self) -> None:
+        """Stop consuming events."""
+        self.consumer.stop()
+        logger.info("PortfolioPerformanceOrchestrator stopped")
+
+    def _on_price_updated(self, event: dict) -> None:
+        """
+        Handle price update event.
+
+        Flow:
+        1. Extract ticker_id and price from event
+        2. Update PerformanceCalculator price cache
+        3. Query portfolios containing this ticker
+        4. Recalculate performance for each portfolio
+        5. Broadcast updates via WebSocket (if configured)
+        """
+        if event.get("event") != "PriceUpdated":
+            return
+
+        data = event.get("data", {})
+        ticker_id = data.get("ticker_id")
+        close_price = data.get("close")
+
+        if not ticker_id or not close_price:
+            return
+
+        # Update price in calculator
+        self.calculator.update_price(ticker_id, Decimal(str(close_price)))
+
+        # Find affected portfolios
+        portfolios_with_ticker = self.portfolio_service.get_portfolios_by_ticker(
+            ticker_id
+        )
+
+        # Recalculate and broadcast
+        for portfolio_id in portfolios_with_ticker:
+            # Get updated holdings
+            holdings = self.portfolio_service.get_holdings_for_calculation(
+                portfolio_id
+            )
+
+            # Calculate performance
+            performance = self.calculator.calculate_portfolio_performance(holdings)
+
+            # Broadcast via WebSocket
+            if self.websocket_publisher:
+                self.websocket_publisher(
+                    str(portfolio_id),
+                    {
+                        "event": "PortfolioPerformanceUpdated",
+                        "portfolio_id": str(portfolio_id),
+                        "data": performance,
+                    }
+                )
+                logger.debug(f"Broadcast performance update for portfolio {portfolio_id}")
+```
+
+**Integration**: Started in `main.py` lifespan handler with WebSocketManager publisher.
+
+**Event Flow**:
+```
+PricePublisher → Kafka (market.prices.live) → PriceEventConsumer →
+Orchestrator._on_price_updated() → PerformanceCalculator →
+WebSocketManager.broadcast_to_topic() → Connected Clients
+```
+
+**Testing**: `backend/tests/test_price_event_consumer.py` (14 tests)
 
 ---
 
 ## Inter-Domain Communication
 
-### Market Data → Portfolio
+### Event-Driven Architecture
+
+The system uses **Kafka** for asynchronous communication between domains:
+
+#### Kafka Topics
+
+| Topic | Producer | Consumer | Purpose |
+|-------|----------|----------|---------|
+| `market.prices.live` | PricePublisher | PriceEventConsumer | Real-time price updates every 5 seconds |
+| `portfolio.holdings.changed` | PortfolioService | (Future) | Portfolio mutation events |
+
+#### Event Flow: Price Updates → Portfolio Recalculation
 
 ```
-Price Update (Kafka) → PriceEventConsumer → PerformanceCalculator → WebSocket
+┌─────────────────┐
+│ PricePublisher  │ (Background Service - 5s interval)
+│  (Ticker 1-20)  │
+└────────┬────────┘
+         │
+         │ publishes PriceUpdated events
+         ▼
+┌─────────────────────────┐
+│  Kafka: market.prices.live │
+└────────┬────────────────┘
+         │
+         │ consumed by
+         ▼
+┌─────────────────────────────────┐
+│  PriceEventConsumer              │
+│  (portfolio-performance-group)   │
+└────────┬────────────────────────┘
+         │
+         │ triggers callback
+         ▼
+┌──────────────────────────────────────┐
+│  PortfolioPerformanceOrchestrator    │
+│  ._on_price_updated()                │
+└────────┬─────────────────────────────┘
+         │
+         ├─→ PerformanceCalculator.update_price()
+         │
+         ├─→ PortfolioService.get_portfolios_by_ticker()
+         │
+         ├─→ PerformanceCalculator.calculate_portfolio_performance()
+         │
+         └─→ WebSocketManager.broadcast_to_topic()
+              │
+              ▼
+         ┌─────────────────┐
+         │ Connected Clients│
+         │ (WebSocket /ws)  │
+         └──────────────────┘
 ```
 
-1. **Trigger**: Price publisher emits new price to Kafka
-2. **Consumer**: Portfolio price event consumer receives update
-3. **Processing**: Performance calculator recalculates affected portfolios
-4. **Notification**: WebSocket broadcasts updates to subscribed clients
+#### Message Formats
+
+**PriceUpdated Event** (`market.prices.live`):
+```json
+{
+  "event": "PriceUpdated",
+  "data": {
+    "ticker_id": 1,
+    "date": "2026-04-07",
+    "open": 150.25,
+    "high": 152.80,
+    "low": 149.50,
+    "close": 151.75,
+    "volume": 1250000
+  }
+}
+```
+
+**HoldingAdded Event** (`portfolio.holdings.changed`):
+```json
+{
+  "event": "HoldingAdded",
+  "portfolio_id": 1,
+  "ticker_id": 5,
+  "quantity": 100,
+  "average_cost": 145.50
+}
+```
+
+**PortfolioPerformanceUpdated** (WebSocket):
+```json
+{
+  "event": "PortfolioPerformanceUpdated",
+  "portfolio_id": "1",
+  "data": {
+    "total_market_value": 125000.00,
+    "total_unrealized_pnl": 5000.00,
+    "total_unrealized_pnl_percent": 4.17,
+    "holdings": [...],
+    "sector_allocation": {...}
+  }
+}
+```
+
+### Synchronous Communication
+
+HTTP routes call domain services directly:
+
+```
+Routes (routes_portfolio.py)
+  ↓
+PortfolioService (database operations)
+  ↓
+Kafka Event Published
+```
+
+### Lifespan Management
+
+Background services are managed by FastAPI lifespan handler in `main.py`:
+
+**Startup**:
+1. Initialize PricePublisher for tickers 1-20 with 5-second interval
+2. Initialize PortfolioService with Kafka producer
+3. Initialize PerformanceCalculator (in-memory price cache)
+4. Initialize PriceEventConsumer (Kafka consumer)
+5. Create WebSocket publisher function
+6. Initialize PortfolioPerformanceOrchestrator with all dependencies
+7. Start PricePublisher background thread
+8. Start PriceEventConsumer background thread
+
+**Shutdown**:
+1. Stop PortfolioPerformanceOrchestrator (stops price consumer)
+2. Stop PricePublisher (joins background thread)
+3. Cleanup Kafka connections
 
 ---
 
@@ -897,40 +1146,109 @@ class InsufficientQuantityError(PortfolioError):
 
 ## Testing Strategy
 
-### Unit Tests
+### Unit Tests (270 tests)
 
-- **Models**: Validation, business rules, computed properties
-- **Services**: Business logic, error handling, cache behavior
-- **Adapters**: API integration, error mapping, retry logic
+**Scope**: Individual components tested in isolation with mocked dependencies.
 
-### Integration Tests
+**Coverage by Component**:
+- **Gateway Layer**: cache.py, formatter.py, health.py, websocket_manager.py
+- **Market Services**: pricing_adapter.py, price_publisher.py, market_data_service.py
+- **Portfolio Services**: portfolio_service.py, performance_calculator.py, price_event_consumer.py
+- **Routes**: routes_market.py, routes_portfolio.py, routes_websocket.py
+- **Middleware**: logging.py
+- **Utilities**: seed_data.py, seed_database.py
 
-- **Database**: CRUD operations, transactions, constraints
-- **Kafka**: Message production/consumption, serialization
-- **Cache**: Redis operations, invalidation, expiration
+**Key Test Files**:
+- `test_websocket_manager.py` (26 tests): Connection management, subscriptions, broadcasting
+- `test_price_event_consumer.py` (14 tests): Kafka consumer, orchestrator, callbacks
+- `test_performance_calculator.py`: P&L calculations, sector allocation
+- `test_price_publisher.py`: Background publishing, lifecycle management
+- `test_pricing_adapter.py`: Mock data generation, Kafka publishing
+- `test_portfolio_service.py`: CRUD operations, Kafka event publishing
+- `test_cache.py`: Redis operations, TTL, invalidation
+- `test_formatter.py`: Response envelopes, error formatting
+- `test_health.py`: PostgreSQL, Redis, Kafka health checks
 
-### Test Coverage Target
+### Integration Tests (45 tests)
 
-- Domain Services: 90%+
-- Models: 95%+
-- Adapters: 80%+ (external dependencies mocked)
+**Scope**: Full HTTP request/response cycles with real PostgreSQL database.
+
+**Test Files**:
+- `integration_test_portfolio.py` (22 tests): Portfolio CRUD, holdings management, performance
+- `integration_test_market.py` (23 tests): Price data, fundamentals, ticker filtering
+
+**Infrastructure**:
+- **Testcontainers**: PostgreSQL in Docker for isolated testing
+- **No Kafka/Redis**: Integration tests focus on HTTP + database only
+- **Automatic Skip**: Tests skip gracefully if Docker not available
+
+### Test Execution
+
+```bash
+# All tests
+pytest  # 315 tests
+
+# Unit tests only (fast, no Docker required)
+pytest tests/test_*.py  # 270 tests
+
+# Integration tests only (requires Docker)
+pytest tests/integration_test_*.py  # 45 tests
+
+# Specific domain
+pytest -k "websocket or price_event"  # WebSocket and Kafka consumer tests
+pytest -k "portfolio"  # Portfolio-related tests
+pytest -k "market"  # Market data tests
+
+# With coverage
+pytest --cov=backend --cov-report=html
+```
 
 ---
 
 ## Future Enhancements
 
 ### Market Data Domain
-- [ ] Real-time streaming price updates (WebSocket to external API)
-- [ ] Options pricing and Greeks calculation
-- [ ] Cryptocurrency support
-- [ ] News and sentiment analysis integration
-- [ ] Technical indicators (RSI, MACD, Bollinger Bands)
+- [ ] Real-time streaming from external APIs (WebSocket to Polygon.io/Alpha Vantage)
+- [ ] Options pricing and Greeks calculation (implied volatility, delta, gamma)
+- [ ] Cryptocurrency support (Bitcoin, Ethereum via Coinbase/Kraken APIs)
+- [ ] News and sentiment analysis integration (NewsAPI, Twitter sentiment)
+- [ ] Technical indicators library (RSI, MACD, Bollinger Bands, Moving Averages)
+- [ ] Historical fundamental data tracking (quarterly earnings, balance sheets)
+- [ ] Multiple data provider support with fallback logic
 
 ### Portfolio Domain
-- [ ] Tax lot tracking (FIFO, LIFO, specific ID)
-- [ ] Dividend tracking and reinvestment
-- [ ] Asset allocation rebalancing recommendations
-- [ ] Risk metrics (beta, Sharpe ratio, max drawdown)
-- [ ] Currency conversion for international holdings
-- [ ] Cost basis adjustments (splits, mergers)
-- [ ] Trade execution planning (limit orders, stop losses)
+- [x] Real-time P&L calculation with price updates ✅
+- [x] Event-driven portfolio recalculation via Kafka ✅
+- [x] WebSocket broadcasting for live portfolio updates ✅
+- [ ] Tax lot tracking (FIFO, LIFO, specific identification methods)
+- [ ] Dividend tracking and automatic reinvestment (DRIP)
+- [ ] Asset allocation rebalancing recommendations with threshold alerts
+- [ ] Risk metrics calculation (portfolio beta, Sharpe ratio, max drawdown, VaR)
+- [ ] Multi-currency support with real-time FX conversion
+- [ ] Corporate action handling (stock splits, mergers, spin-offs)
+- [ ] Trade execution planning (limit orders, stop losses, trailing stops)
+- [ ] Performance attribution analysis (sector, security, allocation effects)
+- [ ] Benchmark comparison (S&P 500, custom indices)
+- [ ] Tax loss harvesting opportunities identification
+
+### Event-Driven Architecture
+- [x] Price event publishing (market.prices.live) ✅
+- [x] Portfolio event publishing (portfolio.holdings.changed) ✅
+- [x] Price event consumption with portfolio orchestration ✅
+- [ ] Portfolio event consumers for audit logging
+- [ ] Event replay capability for debugging
+- [ ] Event sourcing for portfolio state reconstruction
+- [ ] Dead letter queue handling for failed events
+- [ ] Event schema validation and versioning
+
+### WebSocket & Real-Time Features
+- [x] Redis-backed WebSocket connection registry ✅
+- [x] Topic-based subscriptions for portfolio updates ✅
+- [x] Portfolio performance broadcasting ✅
+- [ ] JWT authentication for WebSocket connections
+- [ ] Portfolio-level authorization checks
+- [ ] Market-wide update broadcasting (index movements)
+- [ ] User-specific notification channels
+- [ ] Connection heartbeat and auto-reconnection
+- [ ] Message acknowledgment and guaranteed delivery
+- [ ] Rate limiting per client
