@@ -19,9 +19,11 @@ try:
     )
     from backend.gateway.formatter import error_response, success_response
     from backend.gateway.health import get_health_status
+    from backend.gateway.websocket_manager import create_portfolio_publisher
     from backend.middleware.logging import RequestLoggingMiddleware
     from backend.routes_market import router as market_router
     from backend.routes_portfolio import router as portfolio_router
+    from backend.routes_websocket import router as websocket_router
 except ImportError:
     from config import settings
     from domains.market_data.service.price_publisher import PricePublisher
@@ -33,9 +35,11 @@ except ImportError:
     )
     from gateway.formatter import error_response, success_response
     from gateway.health import get_health_status
+    from gateway.websocket_manager import create_portfolio_publisher
     from middleware.logging import RequestLoggingMiddleware
     from routes_market import router as market_router
     from routes_portfolio import router as portfolio_router
+    from routes_websocket import router as websocket_router
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +82,16 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         group_id="portfolio-performance-group",
     )
 
+    # Create WebSocket publisher for real-time portfolio updates
+    websocket_publisher = create_portfolio_publisher()
+    logger.info("WebSocket publisher created for portfolio updates")
+
     # Create orchestrator to coordinate price updates with performance calculations
-    # WebSocket publisher is None for now (can be added later for real-time updates)
     portfolio_orchestrator = PortfolioPerformanceOrchestrator(
         portfolio_service=portfolio_service,
         performance_calculator=performance_calculator,
         price_consumer=price_consumer,
-        websocket_publisher=None,
+        websocket_publisher=websocket_publisher,
     )
 
     # Start consuming price events
@@ -127,6 +134,7 @@ app.add_middleware(
 # Include routers
 app.include_router(market_router)
 app.include_router(portfolio_router)
+app.include_router(websocket_router)
 
 
 @app.get("/")
