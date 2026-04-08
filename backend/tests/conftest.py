@@ -1,8 +1,10 @@
 """Pytest configuration for integration tests with testcontainers."""
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -10,7 +12,15 @@ from testcontainers.postgres import PostgresContainer
 
 from backend.database.database import get_db
 from backend.database.models import Base
-from backend.main import app
+
+
+@asynccontextmanager
+async def test_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    No-op lifespan for integration tests.
+    Integration tests don't need Kafka/Redis background services.
+    """
+    yield
 
 
 @pytest.fixture(scope="session")
@@ -65,7 +75,35 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     """
     Create a FastAPI test client with database dependency override.
     Each test gets a fresh client with an isolated database session.
+    Uses a test-specific app without Kafka/Redis background services.
     """
+    from fastapi.middleware.cors import CORSMiddleware
+
+    from backend.middleware.logging import RequestLoggingMiddleware
+    from backend.routes_market import router as market_router
+    from backend.routes_portfolio import router as portfolio_router
+
+    # Create test app without background services
+    test_app = FastAPI(
+        title="Stock Portfolio API - Test",
+        description="Test instance without background services",
+        version="1.0.0-test",
+        lifespan=test_lifespan,  # Use no-op lifespan
+    )
+
+    # Configure middlewares
+    test_app.add_middleware(RequestLoggingMiddleware)
+    test_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Include routers
+    test_app.include_router(market_router)
+    test_app.include_router(portfolio_router)
 
     def override_get_db():
         try:
@@ -73,12 +111,12 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         finally:
             pass
 
-    app.dependency_overrides[get_db] = override_get_db
+    test_app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as test_client:
+    with TestClient(test_app) as test_client:
         yield test_client
 
-    app.dependency_overrides.clear()
+    test_app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="function")
