@@ -1,25 +1,71 @@
+import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from datetime import date
+
 import uvicorn
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 try:
+    from backend.config import settings
+    from backend.domains.market_data.service.price_publisher import PricePublisher
     from backend.gateway.formatter import error_response, success_response
     from backend.gateway.health import get_health_status
     from backend.middleware.logging import RequestLoggingMiddleware
     from backend.routes_market import router as market_router
     from backend.routes_portfolio import router as portfolio_router
 except ImportError:
+    from config import settings
+    from domains.market_data.service.price_publisher import PricePublisher
     from gateway.formatter import error_response, success_response
     from gateway.health import get_health_status
     from middleware.logging import RequestLoggingMiddleware
     from routes_market import router as market_router
     from routes_portfolio import router as portfolio_router
 
+logger = logging.getLogger(__name__)
+
+# Global price publisher instance
+price_publisher: PricePublisher | None = None
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan handler - starts/stops background services."""
+    global price_publisher
+
+    # Startup: Initialize and start PricePublisher
+    logger.info("Starting PricePublisher...")
+    kafka_servers = settings.kafka_bootstrap_servers.split(",")
+    price_publisher = PricePublisher(
+        kafka_bootstrap_servers=kafka_servers,
+        topic="market.prices.live",
+        interval_sec=5.0,
+    )
+
+    # Start publishing for ticker IDs 1-20 (adjust based on your seed data)
+    # Using integers as ticker IDs for mock data
+    ticker_ids = list(range(1, 21))
+    start_date = date.today().strftime("%Y-%m-%d")
+    price_publisher.start(ticker_ids, start_date)
+    logger.info(f"PricePublisher started for {len(ticker_ids)} tickers")
+
+    yield
+
+    # Shutdown: Stop PricePublisher
+    logger.info("Stopping PricePublisher...")
+    if price_publisher:
+        price_publisher.stop()
+        logger.info("PricePublisher stopped")
+
+
 app = FastAPI(
     title="Stock Portfolio API",
     description="Backend API for Stock Portfolio Dashboard",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configure request logging
