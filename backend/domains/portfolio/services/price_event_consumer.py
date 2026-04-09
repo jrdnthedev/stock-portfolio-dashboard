@@ -6,6 +6,7 @@ from typing import Any
 from kafka import KafkaConsumer
 from pydantic import BaseModel
 
+from .alert_publisher import AlertPublisher
 from .performance_calculator import PerformanceCalculator
 from .portfolio_service import PortfolioService
 
@@ -90,7 +91,7 @@ class PriceEventConsumer:
 class PortfolioPerformanceOrchestrator:
     """
     Orchestrates the recomputation of portfolio performance when prices update.
-    Integrates PortfolioService, PerformanceCalculator, and PriceEventConsumer.
+    Integrates PortfolioService, PerformanceCalculator, PriceEventConsumer, and AlertPublisher.
     """
 
     def __init__(
@@ -98,11 +99,13 @@ class PortfolioPerformanceOrchestrator:
         portfolio_service: PortfolioService,
         performance_calculator: PerformanceCalculator,
         price_consumer: PriceEventConsumer,
+        alert_publisher: AlertPublisher | None = None,
         websocket_publisher: Callable[[str, dict[str, Any]], None] | None = None,
     ):
         self.portfolio_service = portfolio_service
         self.performance_calculator = performance_calculator
         self.price_consumer = price_consumer
+        self.alert_publisher = alert_publisher
         self.websocket_publisher = websocket_publisher
 
         # Register the callback for price updates
@@ -118,8 +121,8 @@ class PortfolioPerformanceOrchestrator:
 
     def _on_price_updated(self, price_data: dict[str, Any]) -> None:
         """
-        Handle a price update by recomputing affected portfolios and
-        pushing results over WebSocket.
+        Handle a price update by checking alerts, recomputing affected portfolios,
+        and pushing results over WebSocket.
         """
         try:
             ticker_id = price_data.get("ticker_id")
@@ -127,6 +130,10 @@ class PortfolioPerformanceOrchestrator:
 
             if ticker_id is None or close_price is None:
                 return
+
+            # Check and publish alerts if alert publisher is configured
+            if self.alert_publisher:
+                self.alert_publisher.check_and_publish_alerts(ticker_id, close_price)
 
             # Update the price in the performance calculator
             self.performance_calculator.update_price(ticker_id, close_price)

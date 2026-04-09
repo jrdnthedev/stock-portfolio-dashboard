@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 try:
     from backend.config import settings
     from backend.domains.market_data.service.price_publisher import PricePublisher
+    from backend.domains.portfolio.services.alert_publisher import AlertPublisher
     from backend.domains.portfolio.services.performance_calculator import PerformanceCalculator
     from backend.domains.portfolio.services.portfolio_service import PortfolioService
     from backend.domains.portfolio.services.price_event_consumer import (
@@ -27,6 +28,7 @@ try:
 except ImportError:
     from config import settings
     from domains.market_data.service.price_publisher import PricePublisher
+    from domains.portfolio.services.alert_publisher import AlertPublisher
     from domains.portfolio.services.performance_calculator import PerformanceCalculator
     from domains.portfolio.services.portfolio_service import PortfolioService
     from domains.portfolio.services.price_event_consumer import (
@@ -76,6 +78,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         kafka_bootstrap_servers=kafka_servers, topic="portfolio.holdings.changed"
     )
     performance_calculator = PerformanceCalculator()
+
+    # Initialize AlertPublisher for price movement alerts
+    alert_publisher = AlertPublisher(
+        kafka_bootstrap_servers=kafka_servers,
+        topic="portfolio.alerts",
+    )
+    logger.info("AlertPublisher initialized for price movement alerts")
+
     price_consumer = PriceEventConsumer(
         kafka_bootstrap_servers=kafka_servers,
         topic="market.prices.live",
@@ -86,11 +96,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     websocket_publisher = create_portfolio_publisher()
     logger.info("WebSocket publisher created for portfolio updates")
 
-    # Create orchestrator to coordinate price updates with performance calculations
+    # Create orchestrator to coordinate price updates with performance calculations and alerts
     portfolio_orchestrator = PortfolioPerformanceOrchestrator(
         portfolio_service=portfolio_service,
         performance_calculator=performance_calculator,
         price_consumer=price_consumer,
+        alert_publisher=alert_publisher,
         websocket_publisher=websocket_publisher,
     )
 
