@@ -5,6 +5,11 @@
   "description": "Stock Portfolio Dashboard - Monorepo",
   "scripts": {
     "prepare": "husky",
+    "start": "powershell -ExecutionPolicy Bypass -File ./start-dev.ps1",
+    "start:backend": "powershell -ExecutionPolicy Bypass -File ./start-backend.ps1",
+    "stop": "powershell -ExecutionPolicy Bypass -File ./stop-dev.ps1",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
     "lint": "npm run lint:frontend && npm run lint:backend",
     "lint:frontend": "npm run lint --workspace=portfolio-dashboard",
     "lint:backend": "cd backend && ruff check .",
