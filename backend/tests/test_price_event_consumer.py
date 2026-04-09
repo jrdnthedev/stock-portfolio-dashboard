@@ -181,7 +181,11 @@ class TestPortfolioPerformanceOrchestrator:
         websocket_publisher: MagicMock,
     ) -> PortfolioPerformanceOrchestrator:
         return PortfolioPerformanceOrchestrator(
-            portfolio_service, performance_calculator, price_consumer, websocket_publisher
+            portfolio_service,
+            performance_calculator,
+            price_consumer,
+            alert_publisher=None,
+            websocket_publisher=websocket_publisher,
         )
 
     def test_init_registers_callback(self, orchestrator: PortfolioPerformanceOrchestrator) -> None:

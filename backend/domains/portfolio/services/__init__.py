@@ -1,3 +1,4 @@
+from .alert_publisher import AlertPublisher
 from .performance_calculator import (
     HoldingPerformance,
     PerformanceCalculator,
@@ -12,6 +13,7 @@ from .price_event_consumer import (
 from .snapshot_service import SnapshotService
 
 __all__ = [
+    "AlertPublisher",
     "PortfolioService",
     "PerformanceCalculator",
     "HoldingPerformance",
