@@ -88,6 +88,29 @@ class AllocationItem(BaseModel):
 router = APIRouter(prefix="/v1/portfolio", tags=["portfolio"])
 
 
+@router.get("/", response_model=None)
+async def list_portfolios(db: Session = Depends(get_db)) -> JSONResponse:
+    """List all portfolios."""
+    portfolios = db.query(Portfolio).all()
+
+    portfolio_list = []
+    for portfolio in portfolios:
+        portfolio_list.append(
+            {
+                "id": str(portfolio.id),
+                "name": portfolio.name,
+                "description": None,
+                "created_at": portfolio.created_at.isoformat(),
+                # "updated_at": portfolio.updated_at.isoformat(),
+            }
+        )
+
+    return JSONResponse(
+        content=success_response(portfolio_list),
+        status_code=status.HTTP_200_OK,
+    )
+
+
 @router.get("/{id}", response_model=None)
 async def get_portfolio(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
     """Get portfolio details by ID."""

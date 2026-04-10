@@ -1,7 +1,7 @@
 # Docker Setup Guide
 
 ## Prerequisites
-- Docker Desktop installed and running
+- Docker Desktop installed and running # noqa E999
 - Docker Compose v2.0+
 
 ## Getting Started

@@ -1,6 +1,6 @@
 # Code Quality & Consistency Setup
 
-This project uses multiple tools to ensure code quality and consistency across the monorepo.
+This project uses multiple tools to ensure code quality and consistency across the monorepo. # noqa E999
 
 ## Tools Overview
 
