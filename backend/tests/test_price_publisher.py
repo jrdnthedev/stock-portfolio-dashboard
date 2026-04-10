@@ -30,6 +30,10 @@ class DummyPricingAdapter:
         event = {"event": "PriceUpdated", "data": price_point.model_dump()}
         self.published_messages.append(event)
 
+    def close(self) -> None:
+        """Mock close method for cleanup."""
+        pass
+
 
 @patch("domains.market_data.service.price_publisher.PricingAdapter", DummyPricingAdapter)
 def test_price_publisher_starts_and_stops() -> None:

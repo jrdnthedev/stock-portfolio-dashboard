@@ -8,16 +8,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
-try:
-    from backend.database.database import get_db
-    from backend.database.models import Holding, Portfolio, Ticker
-    from backend.gateway.cache import get_cache_service
-    from backend.gateway.formatter import not_found_response, success_response
-except ImportError:
-    from database.database import get_db
-    from database.models import Holding, Portfolio, Ticker
-    from gateway.cache import get_cache_service
-    from gateway.formatter import not_found_response, success_response
+from backend.database.database import get_db
+from backend.database.models import Holding, Portfolio, Ticker
+from backend.gateway.cache import get_cache_service
+from backend.gateway.formatter import not_found_response, success_response
 
 
 class PortfolioResponse(BaseModel):

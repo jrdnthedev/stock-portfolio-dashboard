@@ -1,19 +1,52 @@
 import json
+import logging
 import random
+import time
 from datetime import datetime, timedelta
 
 from kafka import KafkaProducer
+from kafka.errors import KafkaError, NoBrokersAvailable
 
 from ..models.models import PricePoint
 
+logger = logging.getLogger(__name__)
+
 
 class PricingAdapter:
-    def __init__(self, kafka_bootstrap_servers: list[str], topic: str):
-        self.producer = KafkaProducer(
-            bootstrap_servers=kafka_bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        )
+    def __init__(self, kafka_bootstrap_servers: list[str], topic: str, max_retries: int = 5):
+        self.kafka_bootstrap_servers = kafka_bootstrap_servers
         self.topic = topic
+        self.max_retries = max_retries
+        self.producer = self._create_producer_with_retry()
+
+    def _create_producer_with_retry(self) -> KafkaProducer:
+        """Create Kafka producer with exponential backoff retry logic."""
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.info(
+                    f"Attempting to connect to Kafka (attempt {attempt}/{self.max_retries})..."
+                )
+                producer = KafkaProducer(
+                    bootstrap_servers=self.kafka_bootstrap_servers,
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                    request_timeout_ms=10000,
+                    max_block_ms=10000,
+                )
+                logger.info("Successfully connected to Kafka")
+                return producer
+            except (NoBrokersAvailable, KafkaError) as e:
+                if attempt == self.max_retries:
+                    logger.error(
+                        f"Failed to connect to Kafka after {self.max_retries} attempts: {e}"
+                    )
+                    raise
+                wait_time = 2**attempt  # Exponential backoff: 2, 4, 8, 16, 32 seconds
+                logger.warning(
+                    f"Kafka connection failed (attempt {attempt}/{self.max_retries}): {e}"
+                )
+                logger.info(f"Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+        raise RuntimeError("Failed to create Kafka producer")
 
     def generate_mock_ohlcv(self, ticker_id: int, start_date: str, days: int = 1) -> None:
         """
@@ -42,6 +75,19 @@ class PricingAdapter:
             price = close
 
     def publish_price_updated(self, price_point: PricePoint) -> None:
-        event = {"event": "PriceUpdated", "data": price_point.model_dump()}
-        self.producer.send(self.topic, event)
-        self.producer.flush()
+        """Publish price update event to Kafka with error handling."""
+        try:
+            event = {"event": "PriceUpdated", "data": price_point.model_dump()}
+            future = self.producer.send(self.topic, event)
+            # Wait for send to complete with timeout
+            future.get(timeout=10)
+        except Exception as e:
+            logger.error(f"Failed to publish price update for ticker {price_point.ticker_id}: {e}")
+
+    def close(self) -> None:
+        """Close the Kafka producer and cleanup resources."""
+        if self.producer:
+            logger.info("Closing Kafka producer...")
+            self.producer.flush(timeout=5)
+            self.producer.close(timeout=5)
+            logger.info("Kafka producer closed")

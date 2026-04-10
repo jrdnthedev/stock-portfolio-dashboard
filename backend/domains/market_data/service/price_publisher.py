@@ -36,9 +36,11 @@ class PricePublisher:
 
     def stop(self) -> None:
         """
-        Stop publishing events.
+        Stop publishing events and cleanup resources.
         """
         self._stop_event.set()
         if self._thread:
-            self._thread.join()
+            self._thread.join(timeout=10)
             self._thread = None
+        # Close the pricing adapter and Kafka producer
+        self.pricing_adapter.close()

@@ -6,10 +6,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ValidationError
 
-try:
-    from backend.gateway.websocket_manager import get_websocket_manager
-except ImportError:
-    from gateway.websocket_manager import get_websocket_manager
+from backend.gateway.websocket_manager import get_websocket_manager
 
 logger = logging.getLogger(__name__)
 

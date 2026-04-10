@@ -8,14 +8,9 @@ from pydantic import BaseModel
 from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
 
-try:
-    from backend.database.database import get_db
-    from backend.database.models import PricePoint, Ticker
-    from backend.gateway.formatter import not_found_response, success_response
-except ImportError:
-    from database.database import get_db
-    from database.models import PricePoint, Ticker
-    from gateway.formatter import not_found_response, success_response
+from backend.database.database import get_db
+from backend.database.models import PricePoint, Ticker
+from backend.gateway.formatter import not_found_response, success_response
 
 
 class PricePointResponse(BaseModel):

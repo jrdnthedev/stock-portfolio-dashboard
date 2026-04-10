@@ -8,40 +8,22 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-try:
-    from backend.config import settings
-    from backend.domains.market_data.service.price_publisher import PricePublisher
-    from backend.domains.portfolio.services.alert_publisher import AlertPublisher
-    from backend.domains.portfolio.services.performance_calculator import PerformanceCalculator
-    from backend.domains.portfolio.services.portfolio_service import PortfolioService
-    from backend.domains.portfolio.services.price_event_consumer import (
-        PortfolioPerformanceOrchestrator,
-        PriceEventConsumer,
-    )
-    from backend.gateway.formatter import error_response, success_response
-    from backend.gateway.health import get_health_status
-    from backend.gateway.websocket_manager import create_portfolio_publisher
-    from backend.middleware.logging import RequestLoggingMiddleware
-    from backend.routes_market import router as market_router
-    from backend.routes_portfolio import router as portfolio_router
-    from backend.routes_websocket import router as websocket_router
-except ImportError:
-    from config import settings
-    from domains.market_data.service.price_publisher import PricePublisher
-    from domains.portfolio.services.alert_publisher import AlertPublisher
-    from domains.portfolio.services.performance_calculator import PerformanceCalculator
-    from domains.portfolio.services.portfolio_service import PortfolioService
-    from domains.portfolio.services.price_event_consumer import (
-        PortfolioPerformanceOrchestrator,
-        PriceEventConsumer,
-    )
-    from gateway.formatter import error_response, success_response
-    from gateway.health import get_health_status
-    from gateway.websocket_manager import create_portfolio_publisher
-    from middleware.logging import RequestLoggingMiddleware
-    from routes_market import router as market_router
-    from routes_portfolio import router as portfolio_router
-    from routes_websocket import router as websocket_router
+from backend.config import settings
+from backend.domains.market_data.service.price_publisher import PricePublisher
+from backend.domains.portfolio.services.alert_publisher import AlertPublisher
+from backend.domains.portfolio.services.performance_calculator import PerformanceCalculator
+from backend.domains.portfolio.services.portfolio_service import PortfolioService
+from backend.domains.portfolio.services.price_event_consumer import (
+    PortfolioPerformanceOrchestrator,
+    PriceEventConsumer,
+)
+from backend.gateway.formatter import error_response, success_response
+from backend.gateway.health import get_health_status
+from backend.gateway.websocket_manager import create_portfolio_publisher
+from backend.middleware.logging import RequestLoggingMiddleware
+from backend.routes_market import router as market_router
+from backend.routes_portfolio import router as portfolio_router
+from backend.routes_websocket import router as websocket_router
 
 logger = logging.getLogger(__name__)
 

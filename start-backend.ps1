@@ -41,8 +41,10 @@ if (-not (Test-ServiceReachable -Host "localhost" -Port 9093)) {
     while ($attempt -lt $maxAttempts) {
         Start-Sleep -Seconds 2
         if (Test-ServiceReachable -Host "localhost" -Port 9093) {
-            Write-Host "[OK] Kafka is ready" -ForegroundColor Green
-            Start-Sleep -Seconds 5  # Additional buffer
+            Write-Host "[OK] Kafka port is open" -ForegroundColor Green
+            Write-Host "[WAIT] Allowing Kafka additional time to initialize..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 15  # Longer buffer for Kafka to fully initialize
+            Write-Host "[OK] Kafka should be ready" -ForegroundColor Green
             break
         }
         $attempt++
@@ -55,7 +57,8 @@ if (-not (Test-ServiceReachable -Host "localhost" -Port 9093)) {
         docker logs portfolio-kafka --tail 20
         exit 1
     }
-} else {
+}
+else {
     Write-Host "[OK] Kafka is already running" -ForegroundColor Green
 }
 
