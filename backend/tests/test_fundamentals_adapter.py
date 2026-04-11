@@ -1,12 +1,15 @@
+from uuid import uuid4
+
 from domains.market_data.models.models import Fundamental
 from domains.market_data.service.fundamentals_adapter import FundamentalsAdapter
 
 
 def test_generate_mock_fundamental() -> None:
     adapter = FundamentalsAdapter()
-    result = adapter.generate_mock_fundamental(1, "Q1 2024")
+    ticker_id = uuid4()
+    result = adapter.generate_mock_fundamental(ticker_id, "Q1 2024")
     assert isinstance(result, Fundamental)
-    assert result.ticker_id == 1
+    assert result.ticker_id == ticker_id
     assert result.period == "Q1 2024"
     assert result.revenue > 0
     assert result.eps > 0
@@ -16,7 +19,8 @@ def test_generate_mock_fundamental() -> None:
 
 def test_get_fundamental_snapshot() -> None:
     adapter = FundamentalsAdapter()
-    result = adapter.get_fundamental_snapshot(2, "Q2 2025")
+    ticker_id = uuid4()
+    result = adapter.get_fundamental_snapshot(ticker_id, "Q2 2025")
     assert isinstance(result, Fundamental)
-    assert result.ticker_id == 2
+    assert result.ticker_id == ticker_id
     assert result.period == "Q2 2025"

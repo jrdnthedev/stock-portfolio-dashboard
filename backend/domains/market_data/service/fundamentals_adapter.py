@@ -1,4 +1,5 @@
 import random
+from uuid import UUID
 
 from ..models.models import Fundamental
 
@@ -7,7 +8,7 @@ class FundamentalsAdapter:
     def __init__(self) -> None:
         pass
 
-    def generate_mock_fundamental(self, ticker_id: int, period: str) -> Fundamental:
+    def generate_mock_fundamental(self, ticker_id: UUID, period: str) -> Fundamental:
         """
         Generate a mock Fundamental snapshot for a given ticker and reporting period.
         """
@@ -22,7 +23,7 @@ class FundamentalsAdapter:
             market_cap=round(random.uniform(1e8, 1e12), 2),
         )
 
-    def get_fundamental_snapshot(self, ticker_id: int, period: str) -> Fundamental:
+    def get_fundamental_snapshot(self, ticker_id: UUID, period: str) -> Fundamental:
         """
         Return a mock fundamental snapshot for the given ticker and period.
         """

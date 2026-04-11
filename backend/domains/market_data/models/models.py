@@ -1,10 +1,12 @@
 # This file was moved from market_data_models.py for consistency and to avoid mypy duplicate module errors.
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
 # Ticker model
 class Ticker(BaseModel):
-    id: int = Field(..., description="Unique identifier for the ticker")
+    id: UUID = Field(..., description="Unique identifier for the ticker")
     symbol: str = Field(..., description="Stock ticker symbol, e.g., AAPL")
     company_name: str = Field(..., description="Full company name")
     exchange: str = Field(..., description="Exchange where the stock is listed")
@@ -15,7 +17,7 @@ class Ticker(BaseModel):
 # PricePoint model
 class PricePoint(BaseModel):
     id: int = Field(..., description="Unique identifier for the price point")
-    ticker_id: int = Field(..., description="Reference to Ticker id")
+    ticker_id: UUID = Field(..., description="Reference to Ticker id")
     date: str = Field(..., description="Date of the price point (YYYY-MM-DD)")
     open: float = Field(..., description="Opening price")
     high: float = Field(..., description="Highest price")
@@ -27,7 +29,7 @@ class PricePoint(BaseModel):
 # Fundamental model
 class Fundamental(BaseModel):
     id: int = Field(..., description="Unique identifier for the fundamental record")
-    ticker_id: int = Field(..., description="Reference to Ticker id")
+    ticker_id: UUID = Field(..., description="Reference to Ticker id")
     period: str = Field(..., description="Reporting period (e.g., Q1 2024)")
     revenue: float = Field(..., description="Total revenue for the period")
     eps: float = Field(..., description="Earnings per share")

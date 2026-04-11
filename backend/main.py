@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.config import settings
+from backend.database.database import SessionLocal
+from backend.database.models import Ticker
 from backend.domains.market_data.service.price_publisher import PricePublisher
 from backend.domains.portfolio.services.alert_publisher import AlertPublisher
 from backend.domains.portfolio.services.performance_calculator import PerformanceCalculator
@@ -20,6 +22,10 @@ from backend.domains.portfolio.services.price_event_consumer import (
 from backend.gateway.formatter import error_response, success_response
 from backend.gateway.health import get_health_status
 from backend.gateway.websocket_manager import create_portfolio_publisher
+from backend.infrastructure.repositories.sqlalchemy_portfolio_repository import (
+    SQLAlchemyHoldingRepository,
+    SQLAlchemyPortfolioRepository,
+)
 from backend.middleware.logging import RequestLoggingMiddleware
 from backend.routes_market import router as market_router
 from backend.routes_portfolio import router as portfolio_router
@@ -39,25 +45,44 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     kafka_servers = settings.kafka_bootstrap_servers.split(",")
 
-    # Startup: Initialize and start PricePublisher
-    logger.info("Starting PricePublisher...")
-    price_publisher = PricePublisher(
-        kafka_bootstrap_servers=kafka_servers,
-        topic="market.prices.live",
-        interval_sec=5.0,
-    )
+    # Create database session for fetching tickers and initializing services
+    db_session = SessionLocal()
 
-    # Start publishing for ticker IDs 1-20 (adjust based on your seed data)
-    # Using integers as ticker IDs for mock data
-    ticker_ids = list(range(1, 21))
-    start_date = date.today().strftime("%Y-%m-%d")
-    price_publisher.start(ticker_ids, start_date)
-    logger.info(f"PricePublisher started for {len(ticker_ids)} tickers")
+    # Fetch all ticker UUIDs from the database for price publishing
+    try:
+        tickers = db_session.query(Ticker).all()
+        ticker_ids = [ticker.id for ticker in tickers]
+        logger.info(f"Fetched {len(ticker_ids)} tickers from database for price publishing")
+    except Exception as e:
+        logger.error(f"Failed to fetch tickers from database: {e}")
+        ticker_ids = []
+
+    # Startup: Initialize and start PricePublisher with real ticker UUIDs
+    if ticker_ids:
+        logger.info("Starting PricePublisher...")
+        price_publisher = PricePublisher(
+            kafka_bootstrap_servers=kafka_servers,
+            topic="market.prices.live",
+            interval_sec=5.0,
+        )
+        start_date = date.today().strftime("%Y-%m-%d")
+        price_publisher.start(ticker_ids, start_date)
+        logger.info(f"PricePublisher started for {len(ticker_ids)} tickers")
+    else:
+        logger.warning("No tickers found in database - PricePublisher not started")
 
     # Startup: Initialize and start PriceEventConsumer with PortfolioPerformanceOrchestrator
     logger.info("Starting PriceEventConsumer...")
+
+    # Create repository instances
+    portfolio_repo = SQLAlchemyPortfolioRepository(db_session)
+    holding_repo = SQLAlchemyHoldingRepository(db_session)
+
     portfolio_service = PortfolioService(
-        kafka_bootstrap_servers=kafka_servers, topic="portfolio.holdings.changed"
+        portfolio_repo=portfolio_repo,
+        holding_repo=holding_repo,
+        kafka_bootstrap_servers=kafka_servers,
+        topic="portfolio.holdings.changed",
     )
     performance_calculator = PerformanceCalculator()
 
@@ -103,6 +128,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     if price_publisher:
         price_publisher.stop()
         logger.info("PricePublisher stopped")
+
+    # Close database session
+    db_session.close()
+    logger.info("Database session closed")
 
 
 app = FastAPI(

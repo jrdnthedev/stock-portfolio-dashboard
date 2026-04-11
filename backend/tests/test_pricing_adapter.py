@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import ANY, MagicMock, patch
+from uuid import uuid4
 
 from kafka.errors import NoBrokersAvailable
 
@@ -10,7 +11,7 @@ from domains.market_data.service.pricing_adapter import PricingAdapter
 def make_price_point(**kwargs: Any) -> PricePoint:
     defaults: dict[str, Any] = {
         "id": 1,
-        "ticker_id": 1,
+        "ticker_id": uuid4(),
         "date": "2024-01-01",
         "open": 100.0,
         "high": 110.0,
@@ -38,11 +39,14 @@ def test_init_sets_topic_and_producer(mock_kafka_producer: MagicMock) -> None:
 
 def test_generate_mock_ohlcv_calls_publish(monkeypatch: object) -> None:
     _ = monkeypatch  # noqa: ARG002
+    from uuid import uuid4
+
     adapter = PricingAdapter.__new__(PricingAdapter)
     adapter.publish_price_updated = MagicMock()  # type: ignore[method-assign]
     # Bypass __init__
     days = 3
-    adapter.generate_mock_ohlcv(1, "2024-01-01", days=days)
+    ticker_id = uuid4()
+    adapter.generate_mock_ohlcv(ticker_id, "2024-01-01", days=days)
     assert adapter.publish_price_updated.call_count == days
 
 

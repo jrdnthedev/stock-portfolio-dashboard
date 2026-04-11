@@ -2,6 +2,7 @@ import json
 import time
 from typing import Any
 from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -16,13 +17,13 @@ class DummyPricingAdapter:
 
     def __init__(self, kafka_bootstrap_servers: object = None, topic: object = None) -> None:
         _ = kafka_bootstrap_servers, topic
-        self.called: list[tuple[int, str, int]] = []
+        self.called: list[tuple[UUID, str, int]] = []
         self.published_messages: list[dict[str, Any]] = []
         self.producer = MagicMock()
         self.topic = topic or "test.topic"
         DummyPricingAdapter.instances.append(self)
 
-    def generate_mock_ohlcv(self, ticker_id: int, start_date: str, days: int = 1) -> None:
+    def generate_mock_ohlcv(self, ticker_id: UUID, start_date: str, days: int = 1) -> None:
         self.called.append((ticker_id, start_date, days))
 
     def publish_price_updated(self, price_point: PricePoint) -> None:
@@ -39,7 +40,9 @@ class DummyPricingAdapter:
 def test_price_publisher_starts_and_stops() -> None:
     DummyPricingAdapter.instances.clear()
     publisher = PricePublisher(["localhost:9092"], interval_sec=0.1)
-    ticker_ids = [1, 2]
+    ticker_id_1 = uuid4()
+    ticker_id_2 = uuid4()
+    ticker_ids = [ticker_id_1, ticker_id_2]
     start_date = "2024-01-01"
     publisher.start(ticker_ids, start_date)
     time.sleep(0.25)  # Let it run a couple of intervals
@@ -47,8 +50,8 @@ def test_price_publisher_starts_and_stops() -> None:
     # Check that generate_mock_ohlcv was called for each ticker at least once
     assert DummyPricingAdapter.instances, "No DummyPricingAdapter instance created"
     calls = DummyPricingAdapter.instances[0].called
-    assert any(call[0] == 1 for call in calls)
-    assert any(call[0] == 2 for call in calls)
+    assert any(call[0] == ticker_id_1 for call in calls)
+    assert any(call[0] == ticker_id_2 for call in calls)
     # Ensure the thread is stopped
     assert publisher._thread is None
 
@@ -57,7 +60,7 @@ def test_price_publisher_starts_and_stops() -> None:
 def test_price_publisher_multiple_starts_and_stops() -> None:
     DummyPricingAdapter.instances.clear()
     publisher = PricePublisher(["localhost:9092"], interval_sec=0.05)
-    ticker_ids = [1]
+    ticker_ids = [uuid4()]
     start_date = "2024-01-01"
     for _ in range(2):
         publisher.start(ticker_ids, start_date)
@@ -80,9 +83,13 @@ class TestPricePublisherMessageFormat:
         """Create a mock Kafka producer that captures messages."""
         producer = MagicMock()
 
-        def capture_send(topic: str, value: dict[str, Any]) -> None:
+        def capture_send(topic: str, value: dict[str, Any]) -> MagicMock:
             _ = topic
             captured_messages.append(value)
+            # Return a mock future
+            mock_future = MagicMock()
+            mock_future.get = MagicMock(return_value=None)
+            return mock_future
 
         producer.send = MagicMock(side_effect=capture_send)
         producer.flush = MagicMock()
@@ -103,7 +110,7 @@ class TestPricePublisherMessageFormat:
     ) -> None:
         """Test that published messages have the correct event structure."""
         # Generate mock OHLCV data
-        pricing_adapter.generate_mock_ohlcv(ticker_id=123, start_date="2024-01-15", days=1)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-01-15", days=1)
 
         # Verify at least one message was published
         assert len(captured_messages) >= 1
@@ -118,7 +125,7 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that the data field contains all required OHLCV fields."""
-        pricing_adapter.generate_mock_ohlcv(ticker_id=456, start_date="2024-02-01", days=1)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-02-01", days=1)
 
         message = captured_messages[0]
         data = message["data"]
@@ -132,14 +139,14 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that published message fields have correct data types."""
-        pricing_adapter.generate_mock_ohlcv(ticker_id=789, start_date="2024-03-10", days=1)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-03-10", days=1)
 
         message = captured_messages[0]
         data = message["data"]
 
         # Verify data types
         assert isinstance(data["id"], int), "id should be an integer"
-        assert isinstance(data["ticker_id"], int), "ticker_id should be an integer"
+        assert isinstance(data["ticker_id"], str), "ticker_id should be a UUID string"
         assert isinstance(data["date"], str), "date should be a string"
         assert isinstance(data["open"], int | float), "open should be a number"
         assert isinstance(data["high"], int | float), "high should be a number"
@@ -151,18 +158,18 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that the ticker_id in the message matches the requested ticker."""
-        ticker_id = 999
+        ticker_id = uuid4()
         pricing_adapter.generate_mock_ohlcv(ticker_id=ticker_id, start_date="2024-04-01", days=1)
 
         message = captured_messages[0]
-        assert message["data"]["ticker_id"] == ticker_id
+        assert message["data"]["ticker_id"] == str(ticker_id)
 
     def test_published_message_date_format(
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that the date field is in the correct format (YYYY-MM-DD)."""
         start_date = "2024-05-15"
-        pricing_adapter.generate_mock_ohlcv(ticker_id=111, start_date=start_date, days=1)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date=start_date, days=1)
 
         message = captured_messages[0]
         date_str = message["data"]["date"]
@@ -176,7 +183,7 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that OHLCV values follow expected relationships (high >= low, etc.)."""
-        pricing_adapter.generate_mock_ohlcv(ticker_id=222, start_date="2024-06-01", days=5)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-06-01", days=5)
 
         for message in captured_messages:
             data = message["data"]
@@ -196,7 +203,7 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that volume is always positive."""
-        pricing_adapter.generate_mock_ohlcv(ticker_id=333, start_date="2024-07-01", days=3)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-07-01", days=3)
 
         for message in captured_messages:
             data = message["data"]
@@ -206,7 +213,7 @@ class TestPricePublisherMessageFormat:
         self, pricing_adapter: Any, captured_messages: list[dict[str, Any]]
     ) -> None:
         """Test that published messages can be serialized to JSON."""
-        pricing_adapter.generate_mock_ohlcv(ticker_id=444, start_date="2024-08-01", days=1)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-08-01", days=1)
 
         message = captured_messages[0]
 
@@ -224,7 +231,7 @@ class TestPricePublisherMessageFormat:
     ) -> None:
         """Test that generating multiple days produces separate messages."""
         days = 5
-        pricing_adapter.generate_mock_ohlcv(ticker_id=555, start_date="2024-09-01", days=days)
+        pricing_adapter.generate_mock_ohlcv(ticker_id=uuid4(), start_date="2024-09-01", days=days)
 
         assert len(captured_messages) == days, f"Should generate {days} messages"
 

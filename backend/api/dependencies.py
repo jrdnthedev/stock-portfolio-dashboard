@@ -32,6 +32,6 @@ def get_portfolio_service(db: Session = Depends(get_db)) -> PortfolioService:
     return PortfolioService(
         portfolio_repo=portfolio_repo,
         holding_repo=holding_repo,
-        kafka_bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        kafka_bootstrap_servers=settings.kafka_bootstrap_servers.split(","),
         topic="portfolio.holdings.changed",
     )
