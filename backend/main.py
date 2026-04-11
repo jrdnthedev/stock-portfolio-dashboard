@@ -1,14 +1,17 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import date
 
 import uvicorn
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
 from backend.config import settings
+from backend.container import Container
 from backend.database.database import SessionLocal
 from backend.database.models import Ticker
 from backend.domains.market_data.service.price_publisher import PricePublisher
@@ -33,15 +36,22 @@ from backend.routes_websocket import router as websocket_router
 
 logger = logging.getLogger(__name__)
 
-# Global instances for background services
-price_publisher: PricePublisher | None = None
-portfolio_orchestrator: PortfolioPerformanceOrchestrator | None = None
+
+@dataclass
+class AppState:
+    """Application state container for background services."""
+
+    price_publisher: PricePublisher | None
+    portfolio_orchestrator: PortfolioPerformanceOrchestrator | None
+    db_session: Session
+    container: Container
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler - starts/stops background services."""
-    global price_publisher, portfolio_orchestrator
+    # Initialize dependency injection container
+    container = Container()
 
     kafka_servers = settings.kafka_bootstrap_servers.split(",")
 
@@ -58,6 +68,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         ticker_ids = []
 
     # Startup: Initialize and start PricePublisher with real ticker UUIDs
+    price_publisher: PricePublisher | None = None
     if ticker_ids:
         logger.info("Starting PricePublisher...")
         price_publisher = PricePublisher(
@@ -116,21 +127,31 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     portfolio_orchestrator.start()
     logger.info("PriceEventConsumer started - listening for price updates")
 
+    # Store services in application state
+    _app.state.services = AppState(
+        price_publisher=price_publisher,
+        portfolio_orchestrator=portfolio_orchestrator,
+        db_session=db_session,
+        container=container,
+    )
+
+    logger.info("Dependency injection container initialized")
+
     yield
 
     # Shutdown: Stop background services
     logger.info("Stopping background services...")
 
-    if portfolio_orchestrator:
-        portfolio_orchestrator.stop()
+    if _app.state.services.portfolio_orchestrator:
+        _app.state.services.portfolio_orchestrator.stop()
         logger.info("PriceEventConsumer stopped")
 
-    if price_publisher:
-        price_publisher.stop()
+    if _app.state.services.price_publisher:
+        _app.state.services.price_publisher.stop()
         logger.info("PricePublisher stopped")
 
     # Close database session
-    db_session.close()
+    _app.state.services.db_session.close()
     logger.info("Database session closed")
 
 
