@@ -1,6 +1,7 @@
 import threading
 import time
 from collections.abc import Sequence
+from uuid import UUID
 
 from .pricing_adapter import PricingAdapter
 
@@ -17,7 +18,7 @@ class PricePublisher:
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
-    def start(self, ticker_ids: Sequence[int], start_date: str) -> None:
+    def start(self, ticker_ids: Sequence[UUID], start_date: str) -> None:
         """
         Start publishing PriceUpdated events for each ticker at a fixed interval.
         """

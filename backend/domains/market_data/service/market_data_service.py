@@ -1,5 +1,6 @@
 import threading
 import time
+from uuid import UUID
 
 from ..models.models import Fundamental
 from .fundamentals_adapter import FundamentalsAdapter
@@ -13,11 +14,11 @@ class MarketDataService:
         self._simulation_thread: threading.Thread | None = None
         self._stop_simulation = threading.Event()
 
-    def get_fundamental_snapshot(self, ticker_id: int, period: str) -> Fundamental:
+    def get_fundamental_snapshot(self, ticker_id: UUID, period: str) -> Fundamental:
         return self.fundamentals_adapter.get_fundamental_snapshot(ticker_id, period)
 
     def start_price_simulation(
-        self, ticker_id: int, start_date: str, days: int = 1, interval_sec: float = 1.0
+        self, ticker_id: UUID, start_date: str, days: int = 1, interval_sec: float = 1.0
     ) -> None:
         """
         Starts a background thread that simulates price ticks and feeds Kafka.

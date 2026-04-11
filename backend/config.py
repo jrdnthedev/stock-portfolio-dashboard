@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     redis_default_ttl: int = 1800  # 30 minutes
 
     # Kafka settings
-    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_bootstrap_servers: str = "localhost:9093"
     kafka_topic_prefix: str = "stock-portfolio"
 
     class ConfigDict:

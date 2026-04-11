@@ -3,6 +3,7 @@ import logging
 import random
 import time
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from kafka import KafkaProducer
 from kafka.errors import KafkaError, NoBrokersAvailable
@@ -48,7 +49,7 @@ class PricingAdapter:
                 time.sleep(wait_time)
         raise RuntimeError("Failed to create Kafka producer")
 
-    def generate_mock_ohlcv(self, ticker_id: int, start_date: str, days: int = 1) -> None:
+    def generate_mock_ohlcv(self, ticker_id: UUID, start_date: str, days: int = 1) -> None:
         """
         Generate mock OHLCV data for a given ticker and date range.
         """

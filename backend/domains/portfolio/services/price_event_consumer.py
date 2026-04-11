@@ -2,6 +2,7 @@ import json
 import threading
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from kafka import KafkaConsumer
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ from .portfolio_service import PortfolioService
 class PriceUpdatedEvent(BaseModel):
     """Schema for PriceUpdated events from market data."""
 
-    ticker_id: int
+    ticker_id: UUID
     date: str
     close: float
 
