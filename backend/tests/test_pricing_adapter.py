@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import ANY, MagicMock, patch
+from uuid import uuid4
 
 from kafka.errors import NoBrokersAvailable
 
@@ -10,7 +11,7 @@ from domains.market_data.service.pricing_adapter import PricingAdapter
 def make_price_point(**kwargs: Any) -> PricePoint:
     defaults: dict[str, Any] = {
         "id": 1,
-        "ticker_id": 1,
+        "ticker_id": uuid4(),
         "date": "2024-01-01",
         "open": 100.0,
         "high": 110.0,

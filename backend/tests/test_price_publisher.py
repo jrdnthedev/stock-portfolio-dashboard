@@ -83,9 +83,13 @@ class TestPricePublisherMessageFormat:
         """Create a mock Kafka producer that captures messages."""
         producer = MagicMock()
 
-        def capture_send(topic: str, value: dict[str, Any]) -> None:
+        def capture_send(topic: str, value: dict[str, Any]) -> MagicMock:
             _ = topic
             captured_messages.append(value)
+            # Return a mock future
+            mock_future = MagicMock()
+            mock_future.get = MagicMock(return_value=None)
+            return mock_future
 
         producer.send = MagicMock(side_effect=capture_send)
         producer.flush = MagicMock()

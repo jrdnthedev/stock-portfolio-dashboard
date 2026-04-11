@@ -83,7 +83,8 @@ class PriceEventConsumer:
 
             # Invoke the callback if set
             if self._on_price_update_callback:
-                self._on_price_update_callback(price_event.model_dump())
+                # Use mode='json' to ensure UUID is serialized as string
+                self._on_price_update_callback(price_event.model_dump(mode="json"))
 
         except Exception as e:
             print(f"Failed to process PriceUpdated event: {e}")
@@ -126,11 +127,14 @@ class PortfolioPerformanceOrchestrator:
         and pushing results over WebSocket.
         """
         try:
-            ticker_id = price_data.get("ticker_id")
+            ticker_id_str = price_data.get("ticker_id")
             close_price = price_data.get("close")
 
-            if ticker_id is None or close_price is None:
+            if ticker_id_str is None or close_price is None:
                 return
+
+            # Convert ticker_id from string to UUID
+            ticker_id = UUID(ticker_id_str) if isinstance(ticker_id_str, str) else ticker_id_str
 
             # Check and publish alerts if alert publisher is configured
             if self.alert_publisher:

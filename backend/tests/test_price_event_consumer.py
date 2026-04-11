@@ -191,11 +191,14 @@ class TestPriceEventConsumerCallback:
 
         consumer.set_callback(callback)
 
-        # Add a PriceUpdated event
+        # Add a PriceUpdated event with UUID as string
+        from uuid import uuid4
+
+        test_ticker_id = str(uuid4())
         mock_kafka_consumer.add_message(
             {
                 "event": "PriceUpdated",
-                "data": {"ticker_id": 123, "date": "2024-01-15", "close": 100.0},
+                "data": {"ticker_id": test_ticker_id, "date": "2024-01-15", "close": 100.0},
             }
         )
 
@@ -204,7 +207,7 @@ class TestPriceEventConsumerCallback:
         consumer.stop()
 
         assert len(called) == 1
-        assert called[0]["ticker_id"] == 123
+        assert called[0]["ticker_id"] == test_ticker_id
         assert called[0]["close"] == 100.0
 
 

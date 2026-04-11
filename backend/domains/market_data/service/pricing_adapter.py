@@ -78,7 +78,9 @@ class PricingAdapter:
     def publish_price_updated(self, price_point: PricePoint) -> None:
         """Publish price update event to Kafka with error handling."""
         try:
-            event = {"event": "PriceUpdated", "data": price_point.model_dump()}
+            # Use model_dump_json() and parse back to dict to ensure proper JSON serialization of UUIDs
+            price_data = json.loads(price_point.model_dump_json())
+            event = {"event": "PriceUpdated", "data": price_data}
             future = self.producer.send(self.topic, event)
             # Wait for send to complete with timeout
             future.get(timeout=10)
