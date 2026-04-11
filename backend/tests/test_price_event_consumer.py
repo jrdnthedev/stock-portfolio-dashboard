@@ -1,10 +1,15 @@
 import time
 from typing import Any, cast
-from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from unittest.mock import MagicMock, Mock, patch
+from uuid import UUID, uuid4
 
 import pytest
 
+from domains.portfolio.models.models import Holding, Portfolio
+from domains.portfolio.repositories.portfolio_repository import (
+    HoldingRepository,
+    PortfolioRepository,
+)
 from domains.portfolio.services.performance_calculator import PerformanceCalculator
 from domains.portfolio.services.portfolio_service import PortfolioService
 from domains.portfolio.services.price_event_consumer import (
@@ -63,6 +68,93 @@ def consumer(mock_kafka_consumer: DummyKafkaConsumer) -> PriceEventConsumer:
         return_value=mock_kafka_consumer,
     ):
         return PriceEventConsumer(["localhost:9092"], "test.topic")
+
+
+@pytest.fixture
+def mock_portfolio_repo() -> Mock:
+    """Mock PortfolioRepository with in-memory storage."""
+    repo = Mock(spec=PortfolioRepository)
+    storage: dict[UUID, Portfolio] = {}
+
+    def create(portfolio: Portfolio) -> Portfolio:
+        storage[portfolio.id] = portfolio
+        return portfolio
+
+    def get_by_id(portfolio_id: UUID) -> Portfolio | None:
+        return storage.get(portfolio_id)
+
+    def list_by_owner(owner: str) -> list[Portfolio]:
+        return [p for p in storage.values() if p.owner == owner]
+
+    def list_all() -> list[Portfolio]:
+        return list(storage.values())
+
+    def update(portfolio: Portfolio) -> Portfolio:
+        if portfolio.id not in storage:
+            raise ValueError(f"Portfolio {portfolio.id} not found")
+        storage[portfolio.id] = portfolio
+        return portfolio
+
+    def delete(portfolio_id: UUID) -> bool:
+        if portfolio_id in storage:
+            del storage[portfolio_id]
+            return True
+        return False
+
+    repo.create.side_effect = create
+    repo.get_by_id.side_effect = get_by_id
+    repo.list_by_owner.side_effect = list_by_owner
+    repo.list_all.side_effect = list_all
+    repo.update.side_effect = update
+    repo.delete.side_effect = delete
+    return repo
+
+
+@pytest.fixture
+def mock_holding_repo() -> Mock:
+    """Mock HoldingRepository with in-memory storage."""
+    repo = Mock(spec=HoldingRepository)
+    storage: dict[UUID, Holding] = {}
+
+    def create(holding: Holding) -> Holding:
+        storage[holding.id] = holding
+        return holding
+
+    def get_by_id(holding_id: UUID) -> Holding | None:
+        return storage.get(holding_id)
+
+    def list_by_portfolio(portfolio_id: UUID) -> list[Holding]:
+        return [h for h in storage.values() if h.portfolio_id == portfolio_id]
+
+    def list_by_ticker(ticker_id: UUID) -> list[Holding]:
+        return [h for h in storage.values() if h.ticker_id == ticker_id]
+
+    def update(holding: Holding) -> Holding:
+        if holding.id not in storage:
+            raise ValueError(f"Holding {holding.id} not found")
+        storage[holding.id] = holding
+        return holding
+
+    def delete(holding_id: UUID) -> bool:
+        if holding_id in storage:
+            del storage[holding_id]
+            return True
+        return False
+
+    def delete_by_portfolio(portfolio_id: UUID) -> int:
+        to_delete = [h_id for h_id, h in storage.items() if h.portfolio_id == portfolio_id]
+        for h_id in to_delete:
+            del storage[h_id]
+        return len(to_delete)
+
+    repo.create.side_effect = create
+    repo.get_by_id.side_effect = get_by_id
+    repo.list_by_portfolio.side_effect = list_by_portfolio
+    repo.list_by_ticker.side_effect = list_by_ticker
+    repo.update.side_effect = update
+    repo.delete.side_effect = delete
+    repo.delete_by_portfolio.side_effect = delete_by_portfolio
+    return repo
 
 
 class TestPriceEventConsumerInit:
@@ -152,9 +244,15 @@ class TestPriceEventConsumerLifecycle:
 
 class TestPortfolioPerformanceOrchestrator:
     @pytest.fixture
-    def portfolio_service(self) -> PortfolioService:
+    def portfolio_service(
+        self, mock_portfolio_repo: Mock, mock_holding_repo: Mock
+    ) -> PortfolioService:
         with patch("domains.portfolio.services.portfolio_service.KafkaProducer"):
-            return PortfolioService(["localhost:9092"])
+            return PortfolioService(
+                portfolio_repo=mock_portfolio_repo,
+                holding_repo=mock_holding_repo,
+                kafka_bootstrap_servers=["localhost:9092"],
+            )
 
     @pytest.fixture
     def performance_calculator(self) -> PerformanceCalculator:
@@ -327,9 +425,15 @@ class TestPriceEventConsumerPnLRecalculation:
     """Test suite for verifying correct P&L recalculation logic."""
 
     @pytest.fixture
-    def portfolio_service(self) -> PortfolioService:
+    def portfolio_service(
+        self, mock_portfolio_repo: Mock, mock_holding_repo: Mock
+    ) -> PortfolioService:
         with patch("domains.portfolio.services.portfolio_service.KafkaProducer"):
-            return PortfolioService(["localhost:9092"])
+            return PortfolioService(
+                portfolio_repo=mock_portfolio_repo,
+                holding_repo=mock_holding_repo,
+                kafka_bootstrap_servers=["localhost:9092"],
+            )
 
     @pytest.fixture
     def performance_calculator(self) -> PerformanceCalculator:

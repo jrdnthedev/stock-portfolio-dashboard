@@ -1,12 +1,18 @@
+"""Tests for PortfolioService using Repository Pattern with mock repositories."""
+
 from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
 
 from domains.portfolio.models.models import Holding, Portfolio
+from domains.portfolio.repositories.portfolio_repository import (
+    HoldingRepository,
+    PortfolioRepository,
+)
 from domains.portfolio.services.portfolio_service import PortfolioService
 
 
@@ -32,7 +38,7 @@ def make_holding(**kwargs: Any) -> Holding:
         "opened_at": datetime.now(UTC),
     }
     defaults.update(kwargs)
-    return Holding(**defaults)
+    return Holding(**kwargs)
 
 
 @pytest.fixture
@@ -44,20 +50,125 @@ def mock_kafka_producer() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def service(mock_kafka_producer: MagicMock) -> PortfolioService:
-    _ = mock_kafka_producer  # Fixture dependency
-    return PortfolioService(["localhost:9092"], "test.topic")
+def mock_portfolio_repo() -> Mock:
+    """Mock PortfolioRepository with in-memory storage."""
+    repo = Mock(spec=PortfolioRepository)
+    storage: dict[UUID, Portfolio] = {}
+
+    def create(portfolio: Portfolio) -> Portfolio:
+        storage[portfolio.id] = portfolio
+        return portfolio
+
+    def get_by_id(portfolio_id: UUID) -> Portfolio | None:
+        return storage.get(portfolio_id)
+
+    def list_by_owner(owner: str) -> list[Portfolio]:
+        return [p for p in storage.values() if p.owner == owner]
+
+    def list_all() -> list[Portfolio]:
+        return list(storage.values())
+
+    def update(portfolio: Portfolio) -> Portfolio:
+        if portfolio.id not in storage:
+            raise ValueError(f"Portfolio {portfolio.id} not found")
+        storage[portfolio.id] = portfolio
+        return portfolio
+
+    def delete(portfolio_id: UUID) -> bool:
+        if portfolio_id in storage:
+            del storage[portfolio_id]
+            return True
+        return False
+
+    repo.create.side_effect = create
+    repo.get_by_id.side_effect = get_by_id
+    repo.list_by_owner.side_effect = list_by_owner
+    repo.list_all.side_effect = list_all
+    repo.update.side_effect = update
+    repo.delete.side_effect = delete
+    return repo
+
+
+@pytest.fixture
+def mock_holding_repo() -> Mock:
+    """Mock HoldingRepository with in-memory storage."""
+    repo = Mock(spec=HoldingRepository)
+    storage: dict[UUID, Holding] = {}
+
+    def create(holding: Holding) -> Holding:
+        storage[holding.id] = holding
+        return holding
+
+    def get_by_id(holding_id: UUID) -> Holding | None:
+        return storage.get(holding_id)
+
+    def list_by_portfolio(portfolio_id: UUID) -> list[Holding]:
+        return [h for h in storage.values() if h.portfolio_id == portfolio_id]
+
+    def list_by_ticker(ticker_id: UUID) -> list[Holding]:
+        return [h for h in storage.values() if h.ticker_id == ticker_id]
+
+    def update(holding: Holding) -> Holding:
+        if holding.id not in storage:
+            raise ValueError(f"Holding {holding.id} not found")
+        storage[holding.id] = holding
+        return holding
+
+    def delete(holding_id: UUID) -> bool:
+        if holding_id in storage:
+            del storage[holding_id]
+            return True
+        return False
+
+    def delete_by_portfolio(portfolio_id: UUID) -> int:
+        to_delete = [h_id for h_id, h in storage.items() if h.portfolio_id == portfolio_id]
+        for h_id in to_delete:
+            del storage[h_id]
+        return len(to_delete)
+
+    repo.create.side_effect = create
+    repo.get_by_id.side_effect = get_by_id
+    repo.list_by_portfolio.side_effect = list_by_portfolio
+    repo.list_by_ticker.side_effect = list_by_ticker
+    repo.update.side_effect = update
+    repo.delete.side_effect = delete
+    repo.delete_by_portfolio.side_effect = delete_by_portfolio
+    return repo
+
+
+@pytest.fixture
+def service(
+    mock_portfolio_repo: Mock,
+    mock_holding_repo: Mock,
+    mock_kafka_producer: MagicMock,
+) -> PortfolioService:
+    """Create PortfolioService with mock repositories."""
+    _ = mock_kafka_producer
+    return PortfolioService(
+        portfolio_repo=mock_portfolio_repo,
+        holding_repo=mock_holding_repo,
+        kafka_bootstrap_servers=["localhost:9092"],
+        topic="test.topic",
+    )
 
 
 class TestPortfolioServiceInit:
-    def test_init_creates_kafka_producer(self, mock_kafka_producer: MagicMock) -> None:
-        service = PortfolioService(["localhost:9092"], "test.topic")
+    def test_init_creates_kafka_producer(
+        self,
+        mock_portfolio_repo: Mock,
+        mock_holding_repo: Mock,
+        mock_kafka_producer: MagicMock,
+    ) -> None:
+        service = PortfolioService(
+            portfolio_repo=mock_portfolio_repo,
+            holding_repo=mock_holding_repo,
+            kafka_bootstrap_servers=["localhost:9092"],
+            topic="test.topic",
+        )
         assert service.topic == "test.topic"
         assert service.producer == mock_kafka_producer
-
-    def test_init_initializes_empty_storage(self, service: PortfolioService) -> None:
-        assert service.portfolios == {}
-        assert service.holdings == {}
+        assert service.portfolio_repo == mock_portfolio_repo
+        assert service.holding_repo == mock_holding_repo
 
 
 class TestPortfolioServicePortfolioCRUD:
@@ -67,7 +178,7 @@ class TestPortfolioServicePortfolioCRUD:
         assert portfolio.owner == "user1"
         assert portfolio.currency == "EUR"
         assert isinstance(portfolio.id, UUID)
-        assert portfolio.id in service.portfolios
+        service.portfolio_repo.create.assert_called_once()
 
     def test_create_portfolio_defaults_to_usd(self, service: PortfolioService) -> None:
         portfolio = service.create_portfolio("My Portfolio", "user1")
@@ -118,25 +229,19 @@ class TestPortfolioServicePortfolioCRUD:
         portfolio = service.create_portfolio("Test", "user1")
         result = service.delete_portfolio(portfolio.id)
         assert result is True
-        assert portfolio.id not in service.portfolios
+        service.holding_repo.delete_by_portfolio.assert_called_with(portfolio.id)
+        service.portfolio_repo.delete.assert_called_with(portfolio.id)
 
     def test_delete_portfolio_returns_false_if_not_found(self, service: PortfolioService) -> None:
         result = service.delete_portfolio(uuid4())
         assert result is False
 
-    def test_delete_portfolio_deletes_associated_holdings(
-        self, service: PortfolioService, mock_kafka_producer: MagicMock
-    ) -> None:
-        _ = mock_kafka_producer  # Used via service fixture
+    def test_delete_portfolio_deletes_associated_holdings(self, service: PortfolioService) -> None:
         portfolio = service.create_portfolio("Test", "user1")
-        holding1 = service.create_holding(portfolio.id, uuid4(), 100.0, 50.0)
-        holding2 = service.create_holding(portfolio.id, uuid4(), 200.0, 75.0)
-        assert holding1 is not None
-        assert holding2 is not None
-
+        _ = service.create_holding(portfolio.id, uuid4(), 100.0, 50.0)
+        _ = service.create_holding(portfolio.id, uuid4(), 200.0, 75.0)
         service.delete_portfolio(portfolio.id)
-        assert holding1.id not in service.holdings
-        assert holding2.id not in service.holdings
+        service.holding_repo.delete_by_portfolio.assert_called_with(portfolio.id)
 
 
 class TestPortfolioServiceHoldingCRUD:
@@ -153,9 +258,8 @@ class TestPortfolioServiceHoldingCRUD:
         assert holding.quantity == 150.0
         assert holding.avg_cost_basis == 45.5
         assert isinstance(holding.id, UUID)
-        assert holding.id in service.holdings
 
-        # Verify event was published
+        service.holding_repo.create.assert_called_once()
         mock_kafka_producer.send.assert_called()
         mock_kafka_producer.flush.assert_called()
 
@@ -217,7 +321,6 @@ class TestPortfolioServiceHoldingCRUD:
         assert updated.quantity == 150.0
         assert updated.avg_cost_basis == 50.0
 
-        # Verify event was published
         args, _ = mock_kafka_producer.send.call_args
         event = args[1]
         assert event["event_type"] == "updated"
@@ -246,12 +349,7 @@ class TestPortfolioServiceHoldingCRUD:
         mock_kafka_producer.reset_mock()
         result = service.delete_holding(holding.id)
         assert result is True
-        assert holding.id not in service.holdings
-
-        # Verify event was published
-        args, _ = mock_kafka_producer.send.call_args
-        event = args[1]
-        assert event["event_type"] == "deleted"
+        service.holding_repo.delete.assert_called_with(holding.id)
 
     def test_delete_holding_returns_false_if_not_found(self, service: PortfolioService) -> None:
         result = service.delete_holding(uuid4())

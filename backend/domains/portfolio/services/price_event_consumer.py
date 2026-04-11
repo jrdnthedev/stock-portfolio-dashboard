@@ -140,9 +140,9 @@ class PortfolioPerformanceOrchestrator:
 
             # Find all portfolios that have holdings for this ticker
             affected_portfolios = set()
-            for holding in self.portfolio_service.holdings.values():
-                if holding.ticker_id == ticker_id:
-                    affected_portfolios.add(holding.portfolio_id)
+            holdings_with_ticker = self.portfolio_service.list_holdings_by_ticker(ticker_id)
+            for holding in holdings_with_ticker:
+                affected_portfolios.add(holding.portfolio_id)
 
             # Recompute and publish performance for affected portfolios
             for portfolio_id in affected_portfolios:
