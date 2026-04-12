@@ -79,7 +79,7 @@ class AllocationItem(BaseModel):
     sector: str
 
 
-router = APIRouter(prefix="/v1/portfolio", tags=["portfolio"])
+router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 @router.get("/", response_model=None)
