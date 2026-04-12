@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from backend.common.exceptions import KafkaConnectionError, MessagePublishError
 from kafka import KafkaProducer
 from kafka.errors import KafkaError, NoBrokersAvailable
 
@@ -40,14 +41,14 @@ class PricingAdapter:
                     logger.error(
                         f"Failed to connect to Kafka after {self.max_retries} attempts: {e}"
                     )
-                    raise
+                    raise KafkaConnectionError(reason=str(e)) from e
                 wait_time = 2**attempt  # Exponential backoff: 2, 4, 8, 16, 32 seconds
                 logger.warning(
                     f"Kafka connection failed (attempt {attempt}/{self.max_retries}): {e}"
                 )
                 logger.info(f"Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
-        raise RuntimeError("Failed to create Kafka producer")
+        raise KafkaConnectionError(reason="Failed to create Kafka producer after all retries")
 
     def generate_mock_ohlcv(self, ticker_id: UUID, start_date: str, days: int = 1) -> None:
         """
@@ -86,6 +87,7 @@ class PricingAdapter:
             future.get(timeout=10)
         except Exception as e:
             logger.error(f"Failed to publish price update for ticker {price_point.ticker_id}: {e}")
+            raise MessagePublishError(topic=self.topic, reason=str(e)) from e
 
     def close(self) -> None:
         """Close the Kafka producer and cleanup resources."""

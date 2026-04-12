@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from backend.common.exceptions import HoldingNotFoundError, PortfolioNotFoundError
 from backend.database.models import Holding as DBHolding
 from backend.database.models import Portfolio as DBPortfolio
 from backend.domains.portfolio.models.models import Holding as DomainHolding
@@ -57,7 +58,7 @@ class SQLAlchemyPortfolioRepository(PortfolioRepository):
             self.session.query(DBPortfolio).filter(DBPortfolio.id == portfolio.id).first()
         )
         if not db_portfolio:
-            raise ValueError(f"Portfolio {portfolio.id} not found")
+            raise PortfolioNotFoundError(portfolio.id)
 
         db_portfolio.name = portfolio.name
         db_portfolio.currency = portfolio.currency
@@ -126,7 +127,7 @@ class SQLAlchemyHoldingRepository(HoldingRepository):
         """Update an existing holding."""
         db_holding = self.session.query(DBHolding).filter(DBHolding.id == holding.id).first()
         if not db_holding:
-            raise ValueError(f"Holding {holding.id} not found")
+            raise HoldingNotFoundError(holding.id)
 
         db_holding.quantity = holding.quantity
         db_holding.avg_cost_basis = holding.avg_cost_basis
