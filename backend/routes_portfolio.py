@@ -1,6 +1,7 @@
 """Portfolio management API routes with database integration."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Query, status
@@ -12,6 +13,7 @@ from backend.database.database import get_db
 from backend.database.models import Holding, Portfolio, Ticker
 from backend.gateway.cache import get_cache_service
 from backend.gateway.formatter import not_found_response, success_response
+from backend.middleware.auth import get_current_active_user
 
 
 class PortfolioResponse(BaseModel):
@@ -83,9 +85,14 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 @router.get("/", response_model=None)
-async def list_portfolios(db: Session = Depends(get_db)) -> JSONResponse:
-    """List all portfolios."""
-    portfolios = db.query(Portfolio).all()
+async def list_portfolios(
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """List all portfolios for the authenticated user."""
+    # Filter portfolios by the authenticated user's email
+    user_email = current_user["sub"]
+    portfolios = db.query(Portfolio).filter(Portfolio.owner == user_email).all()
 
     portfolio_list = []
     for portfolio in portfolios:
@@ -106,9 +113,16 @@ async def list_portfolios(db: Session = Depends(get_db)) -> JSONResponse:
 
 
 @router.get("/{id}", response_model=None)
-async def get_portfolio(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
-    """Get portfolio details by ID."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+async def get_portfolio(
+    id: UUID,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Get portfolio details by ID for the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -155,9 +169,16 @@ async def get_portfolio(id: UUID, db: Session = Depends(get_db)) -> JSONResponse
 
 
 @router.get("/{id}/holdings", response_model=None)
-async def get_holdings(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
-    """Get all holdings for a portfolio."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+async def get_holdings(
+    id: UUID,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Get all holdings for a portfolio owned by the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -225,10 +246,14 @@ async def get_performance(
     id: UUID,
     from_date: date | None = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
     to_date: date | None = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
+    current_user: dict[str, Any] = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """Get portfolio performance metrics over a date range."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+    """Get portfolio performance metrics over a date range for the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -253,9 +278,16 @@ async def get_performance(
 
 
 @router.get("/{id}/allocation", response_model=None)
-async def get_allocation(id: UUID, db: Session = Depends(get_db)) -> JSONResponse:
-    """Get portfolio allocation breakdown."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+async def get_allocation(
+    id: UUID,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Get portfolio allocation breakdown for the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -307,10 +339,16 @@ async def get_allocation(id: UUID, db: Session = Depends(get_db)) -> JSONRespons
 
 @router.post("/{id}/holdings", response_model=None)
 async def create_holding(
-    id: UUID, holding: HoldingCreate = Body(...), db: Session = Depends(get_db)
+    id: UUID,
+    holding: HoldingCreate = Body(...),
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """Add a new holding to the portfolio."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+    """Add a new holding to the portfolio owned by the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -383,10 +421,17 @@ async def create_holding(
 
 @router.put("/{id}/holdings/{hid}", response_model=None)
 async def update_holding(
-    id: UUID, hid: UUID, holding_update: HoldingUpdate = Body(...), db: Session = Depends(get_db)
+    id: UUID,
+    hid: UUID,
+    data: HoldingUpdate = Body(...),
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """Update an existing holding."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+    """Update an existing holding for the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))
@@ -404,10 +449,10 @@ async def update_holding(
         return JSONResponse(content=response, status_code=status.HTTP_404_NOT_FOUND)
 
     # Update fields
-    if holding_update.quantity is not None:
-        holding.quantity = holding_update.quantity
-    if holding_update.average_cost is not None:
-        holding.avg_cost_basis = holding_update.average_cost
+    if data.quantity is not None:
+        holding.quantity = data.quantity
+    if data.average_cost is not None:
+        holding.avg_cost_basis = data.average_cost
 
     db.commit()
     db.refresh(holding)
@@ -452,9 +497,17 @@ async def update_holding(
 
 
 @router.delete("/{id}/holdings/{hid}", response_model=None)
-async def delete_holding(id: UUID, hid: UUID, db: Session = Depends(get_db)) -> JSONResponse:
-    """Delete a holding from the portfolio."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == id).first()
+async def delete_holding(
+    id: UUID,
+    hid: UUID,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Delete a holding from the portfolio for the authenticated user."""
+    user_email = current_user["sub"]
+    portfolio = (
+        db.query(Portfolio).filter(Portfolio.id == id, Portfolio.owner == user_email).first()
+    )
 
     if not portfolio:
         response = not_found_response("Portfolio", str(id))

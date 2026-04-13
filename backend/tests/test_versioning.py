@@ -64,8 +64,8 @@ class TestVersionedEndpoints:
     def test_v1_portfolio_list_endpoint(self):
         """Test that v1 portfolio endpoint works."""
         response = client.get("/api/v1/portfolio/")
-        # Should return 200 or 404 depending on database state
-        assert response.status_code in [200, 500]  # 500 if no DB connection in test
+        # Should return 200, 401 (auth required), or 500 depending on state
+        assert response.status_code in [200, 401, 500]  # 401 if no auth, 500 if no DB connection
 
     def test_v1_market_endpoint(self):
         """Test that v1 market endpoint structure."""

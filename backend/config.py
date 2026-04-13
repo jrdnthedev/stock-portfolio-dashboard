@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "localhost:9093"
     kafka_topic_prefix: str = "stock-portfolio"
 
+    # JWT Authentication settings
+    jwt_secret_key: str = os.getenv(
+        "JWT_SECRET_KEY",
+        "your-secret-key-CHANGE-THIS-IN-PRODUCTION-min-32-characters-long",
+    )
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 30  # 30 minutes
+    jwt_refresh_token_expire_days: int = 7  # 7 days
+
     class ConfigDict:
         case_sensitive = False
 
