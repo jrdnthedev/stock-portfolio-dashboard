@@ -182,7 +182,7 @@ def decode_token(token: str) -> dict[str, Any]:
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
         )
-        return payload  # type: ignore[no-any-return]
+        return payload
     except jwt.PyJWTError as e:
         logger.warning(f"JWT decode error: {e}")
         raise AuthenticationError(f"Invalid or expired token: {e}") from e
