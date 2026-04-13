@@ -6,13 +6,13 @@ and route protection capabilities.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any
 
 import bcrypt
+import jwt
 from backend.config import settings
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def create_access_token(
         algorithm=settings.jwt_algorithm,
     )
 
-    return cast(str, encoded_jwt)
+    return encoded_jwt
 
 
 def create_refresh_token(
@@ -160,7 +160,7 @@ def create_refresh_token(
         algorithm=settings.jwt_algorithm,
     )
 
-    return cast(str, encoded_jwt)
+    return encoded_jwt
 
 
 def decode_token(token: str) -> dict[str, Any]:
@@ -182,8 +182,8 @@ def decode_token(token: str) -> dict[str, Any]:
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
         )
-        return cast(dict[str, Any], payload)
-    except JWTError as e:
+        return payload  # type: ignore[no-any-return]
+    except jwt.PyJWTError as e:
         logger.warning(f"JWT decode error: {e}")
         raise AuthenticationError(f"Invalid or expired token: {e}") from e
 

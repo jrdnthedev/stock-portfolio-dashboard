@@ -1,6 +1,6 @@
 # Custom Exceptions - Usage Guide
 
-This guide demonstrates how to use the custom exceptions in the Stock Portfolio Backend application.
+This guide demonstrates how to use the custom exceptions in the Stock Portfolio Backend application. # noqa E999
 
 ## Overview
 
