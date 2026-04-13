@@ -1,6 +1,6 @@
 # Stock Portfolio Dashboard
 
-A full-stack stock portfolio management application built with **Angular** (frontend) and **FastAPI** (backend), featuring real-time stock tracking, analytics, and a modern microservices architecture.  # noqa: E999
+A full-stack stock portfolio management application built with **Angular** (frontend) and **FastAPI** (backend), featuring real-time stock tracking, analytics, and a modern microservices architecture.
 
 ## 📋 Table of Contents
 

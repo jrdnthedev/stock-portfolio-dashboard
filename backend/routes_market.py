@@ -60,7 +60,7 @@ class TickerResponse(BaseModel):
     asset_class: str
 
 
-router = APIRouter(prefix="/v1/market", tags=["market"])
+router = APIRouter(prefix="/market", tags=["market"])
 
 
 @router.get("/prices/{ticker}", response_model=None)

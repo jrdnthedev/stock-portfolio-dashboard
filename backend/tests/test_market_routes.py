@@ -2,17 +2,16 @@
 
 from fastapi.testclient import TestClient
 
-from main import app
-
-client = TestClient(app)
+# Uses the seeded_client fixture from conftest.py which provides a test app
+# with mocked authentication, database, and pre-seeded test data
 
 
 class TestHistoricalPrices:
     """Test historical prices endpoint."""
 
-    def test_get_historical_prices_success(self) -> None:
+    def test_get_historical_prices_success(self, seeded_client: TestClient) -> None:
         """Test retrieving historical prices without date filters."""
-        response = client.get("/v1/market/prices/AAPL")
+        response = seeded_client.get("/v1/market/prices/AAPL")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -22,9 +21,9 @@ class TestHistoricalPrices:
         assert data["metadata"]["ticker"] == "AAPL"
         assert data["metadata"]["count"] == len(data["data"])
 
-    def test_get_historical_prices_with_date_range(self) -> None:
+    def test_get_historical_prices_with_date_range(self, seeded_client: TestClient) -> None:
         """Test retrieving historical prices with date range."""
-        response = client.get("/v1/market/prices/AAPL?from=2026-04-01&to=2026-04-02")
+        response = seeded_client.get("/v1/market/prices/AAPL?from=2026-04-01&to=2026-04-02")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -34,9 +33,9 @@ class TestHistoricalPrices:
         for price in data["data"]:
             assert "2026-04-01" <= price["date"] <= "2026-04-02"
 
-    def test_get_historical_prices_ticker_not_found(self) -> None:
+    def test_get_historical_prices_ticker_not_found(self, seeded_client: TestClient) -> None:
         """Test retrieving historical prices for non-existent ticker."""
-        response = client.get("/v1/market/prices/INVALID")
+        response = seeded_client.get("/v1/market/prices/INVALID")
         assert response.status_code == 404
         data = response.json()
         assert data["success"] is False
@@ -48,9 +47,9 @@ class TestHistoricalPrices:
 class TestLatestPrice:
     """Test latest price endpoint."""
 
-    def test_get_latest_price_success(self) -> None:
+    def test_get_latest_price_success(self, seeded_client: TestClient) -> None:
         """Test retrieving latest price."""
-        response = client.get("/v1/market/prices/AAPL/latest")
+        response = seeded_client.get("/v1/market/prices/AAPL/latest")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -62,9 +61,9 @@ class TestLatestPrice:
         assert "volume" in data["data"]
         assert "timestamp" in data["data"]
 
-    def test_get_latest_price_ticker_not_found(self) -> None:
+    def test_get_latest_price_ticker_not_found(self, seeded_client: TestClient) -> None:
         """Test retrieving latest price for non-existent ticker."""
-        response = client.get("/v1/market/prices/INVALID/latest")
+        response = seeded_client.get("/v1/market/prices/INVALID/latest")
         assert response.status_code == 404
         data = response.json()
         assert data["success"] is False
@@ -74,9 +73,9 @@ class TestLatestPrice:
 class TestFundamentals:
     """Test fundamentals endpoint."""
 
-    def test_get_fundamentals_success(self) -> None:
+    def test_get_fundamentals_success(self, seeded_client: TestClient) -> None:
         """Test retrieving fundamentals."""
-        response = client.get("/v1/market/fundamentals/AAPL")
+        response = seeded_client.get("/v1/market/fundamentals/AAPL")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -88,9 +87,9 @@ class TestFundamentals:
         assert "market_cap" in data["data"]
         assert "pe_ratio" in data["data"]
 
-    def test_get_fundamentals_ticker_not_found(self) -> None:
+    def test_get_fundamentals_ticker_not_found(self, seeded_client: TestClient) -> None:
         """Test retrieving fundamentals for non-existent ticker."""
-        response = client.get("/v1/market/fundamentals/INVALID")
+        response = seeded_client.get("/v1/market/fundamentals/INVALID")
         assert response.status_code == 404
         data = response.json()
         assert data["success"] is False
@@ -100,9 +99,9 @@ class TestFundamentals:
 class TestTickers:
     """Test tickers listing endpoint."""
 
-    def test_get_all_tickers(self) -> None:
+    def test_get_all_tickers(self, seeded_client: TestClient) -> None:
         """Test retrieving all tickers without filters."""
-        response = client.get("/v1/market/tickers")
+        response = seeded_client.get("/v1/market/tickers")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -111,9 +110,9 @@ class TestTickers:
         assert len(data["data"]) > 0
         assert data["metadata"]["count"] == len(data["data"])
 
-    def test_get_tickers_filter_by_sector(self) -> None:
+    def test_get_tickers_filter_by_sector(self, seeded_client: TestClient) -> None:
         """Test retrieving tickers filtered by sector."""
-        response = client.get("/v1/market/tickers?sector=Technology")
+        response = seeded_client.get("/v1/market/tickers?sector=Technology")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -122,9 +121,9 @@ class TestTickers:
         for ticker in data["data"]:
             assert ticker["sector"] == "Technology"
 
-    def test_get_tickers_filter_by_exchange(self) -> None:
+    def test_get_tickers_filter_by_exchange(self, seeded_client: TestClient) -> None:
         """Test retrieving tickers filtered by exchange."""
-        response = client.get("/v1/market/tickers?exchange=NASDAQ")
+        response = seeded_client.get("/v1/market/tickers?exchange=NASDAQ")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -133,9 +132,9 @@ class TestTickers:
         for ticker in data["data"]:
             assert ticker["exchange"] == "NASDAQ"
 
-    def test_get_tickers_filter_by_asset_class(self) -> None:
+    def test_get_tickers_filter_by_asset_class(self, seeded_client: TestClient) -> None:
         """Test retrieving tickers filtered by asset class."""
-        response = client.get("/v1/market/tickers?asset_class=Stock")
+        response = seeded_client.get("/v1/market/tickers?asset_class=Stock")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -144,9 +143,9 @@ class TestTickers:
         for ticker in data["data"]:
             assert ticker["asset_class"] == "Stock"
 
-    def test_get_tickers_multiple_filters(self) -> None:
+    def test_get_tickers_multiple_filters(self, seeded_client: TestClient) -> None:
         """Test retrieving tickers with multiple filters."""
-        response = client.get("/v1/market/tickers?sector=Financial&exchange=NYSE")
+        response = seeded_client.get("/v1/market/tickers?sector=Financial&exchange=NYSE")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True

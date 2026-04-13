@@ -106,13 +106,17 @@ def test_retry_logic_on_kafka_unavailable(
 def test_retry_logic_fails_after_max_retries(
     mock_kafka_producer: MagicMock, mock_sleep: MagicMock
 ) -> None:
-    """Test that PricingAdapter raises error after max retries."""
+    """Test that PricingAdapter raises KafkaConnectionError after max retries."""
+    from backend.common.exceptions import KafkaConnectionError
+
     # Always fail
     mock_kafka_producer.side_effect = NoBrokersAvailable("No brokers")
     try:
         PricingAdapter(["localhost:9092"], "topic1", max_retries=3)
-        raise AssertionError("Expected NoBrokersAvailable to be raised")
-    except NoBrokersAvailable:
+        raise AssertionError("Expected KafkaConnectionError to be raised")
+    except KafkaConnectionError as e:
+        # Verify exception details
+        assert "No brokers" in str(e)
         # Should have tried 3 times
         assert mock_kafka_producer.call_count == 3
         # Should have slept 2 times (no sleep after last failure)

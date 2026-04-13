@@ -2,20 +2,18 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from main import app
-
-client = TestClient(app)
+# Uses the client fixture from conftest.py which provides a test app
 
 
-def test_root() -> None:
+def test_root(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["message"] == "Stock Portfolio API"
     assert response.json()["status"] == "running"
 
 
-@patch("main.get_health_status")
-def test_health_check(mock_health_status: MagicMock) -> None:
+@patch("backend.gateway.health.get_health_status")
+def test_health_check(mock_health_status: MagicMock, client: TestClient) -> None:
     mock_health_status.return_value = {
         "status": "healthy",
         "timestamp": "2026-04-05T12:00:00",
@@ -34,8 +32,8 @@ def test_health_check(mock_health_status: MagicMock) -> None:
     assert data["data"]["kafka"]["status"] == "healthy"
 
 
-@patch("main.get_health_status")
-def test_health_check_unhealthy(mock_health_status: MagicMock) -> None:
+@patch("backend.gateway.health.get_health_status")
+def test_health_check_unhealthy(mock_health_status: MagicMock, client: TestClient) -> None:
     mock_health_status.return_value = {
         "status": "unhealthy",
         "timestamp": "2026-04-05T12:00:00",
@@ -52,7 +50,7 @@ def test_health_check_unhealthy(mock_health_status: MagicMock) -> None:
     assert data["metadata"]["services"]["redis"]["status"] == "unhealthy"
 
 
-def test_request_logging_headers() -> None:
+def test_request_logging_headers(client: TestClient) -> None:
     """Test that logging middleware adds tracking headers."""
     response = client.get("/")
     assert response.status_code == 200

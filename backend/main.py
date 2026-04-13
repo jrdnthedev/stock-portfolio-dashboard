@@ -10,6 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from backend.api.versioning import (
+    create_api_v1_router,
+    create_websocket_router,
+    get_api_version,
+    get_available_versions,
+)
 from backend.config import settings
 from backend.container import Container
 from backend.database.database import SessionLocal
@@ -30,9 +36,7 @@ from backend.infrastructure.repositories.sqlalchemy_portfolio_repository import 
     SQLAlchemyPortfolioRepository,
 )
 from backend.middleware.logging import RequestLoggingMiddleware
-from backend.routes_market import router as market_router
-from backend.routes_portfolio import router as portfolio_router
-from backend.routes_websocket import router as websocket_router
+from backend.middleware.versioning import APIVersionMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -157,10 +161,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="Stock Portfolio API",
-    description="Backend API for Stock Portfolio Dashboard",
-    version="1.0.0",
+    description="Backend API for Stock Portfolio Dashboard with versioning support",
+    version=get_api_version(),
     lifespan=lifespan,
 )
+
+# Configure API versioning middleware
+app.add_middleware(APIVersionMiddleware)
 
 # Configure request logging
 app.add_middleware(RequestLoggingMiddleware)
@@ -174,15 +181,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(market_router)
-app.include_router(portfolio_router)
-app.include_router(websocket_router)
+# Include versioned API routers
+api_v1 = create_api_v1_router()
+app.include_router(api_v1)
+
+# Include WebSocket router (not versioned in URL path)
+ws_router = create_websocket_router()
+app.include_router(ws_router)
 
 
 @app.get("/")
-async def root() -> dict[str, str]:
-    return {"message": "Stock Portfolio API", "status": "running"}
+async def root() -> dict[str, str | list[str]]:
+    """Root endpoint with API information and available versions."""
+    return {
+        "message": "Stock Portfolio API",
+        "status": "running",
+        "version": get_api_version(),
+        "available_versions": get_available_versions(),
+        "documentation": "/docs",
+    }
 
 
 @app.get("/api/health")
