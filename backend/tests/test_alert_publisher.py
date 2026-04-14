@@ -1,20 +1,12 @@
 """Tests for AlertPublisher service."""
 
-from collections.abc import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 
 from domains.portfolio.services.alert_publisher import AlertPublisher
-
-
-@pytest.fixture
-def mock_kafka_producer() -> Generator[MagicMock, None, None]:
-    with patch("domains.portfolio.services.alert_publisher.KafkaProducer") as mock:
-        mock_instance = MagicMock()
-        mock.return_value = mock_instance
-        yield mock_instance
+from tests.test_fixtures import mock_kafka_producer  # noqa: F401
 
 
 @pytest.fixture
