@@ -10,16 +10,7 @@ from backend.gateway.websocket_manager import (
     create_portfolio_publisher,
     get_websocket_manager,
 )
-
-
-@pytest.fixture
-def mock_cache():
-    """Mock cache service."""
-    cache = MagicMock()
-    cache.get.return_value = None
-    cache.set.return_value = True
-    cache.delete.return_value = True
-    return cache
+from tests.test_fixtures import mock_cache, mock_websocket  # noqa: F401
 
 
 @pytest.fixture
@@ -27,15 +18,6 @@ def manager(mock_cache):
     """Create WebSocketManager with mocked cache."""
     with patch("backend.gateway.websocket_manager.get_cache_service", return_value=mock_cache):
         return WebSocketManager()
-
-
-@pytest.fixture
-def mock_websocket():
-    """Mock WebSocket connection."""
-    ws = AsyncMock(spec=WebSocket)
-    ws.accept = AsyncMock()
-    ws.send_json = AsyncMock()
-    return ws
 
 
 class TestWebSocketManagerConnect:

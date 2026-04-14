@@ -10,6 +10,7 @@ import pytest
 from redis.exceptions import ConnectionError, RedisError
 
 from backend.gateway.cache import CacheKeyGenerator, CacheService
+from tests.test_fixtures import mock_redis  # noqa: F401
 
 
 class TestCacheKeyGenerator:
@@ -78,15 +79,6 @@ class TestCacheKeyGenerator:
 
 class TestCacheService:
     """Test Redis cache service."""
-
-    @pytest.fixture
-    def mock_redis(self) -> Generator[MagicMock, None, None]:
-        """Create a mock Redis client."""
-        with patch("backend.gateway.cache.redis.Redis") as mock:
-            redis_instance = MagicMock()
-            mock.return_value = redis_instance
-            redis_instance.ping.return_value = True
-            yield redis_instance
 
     @pytest.fixture
     def cache_service(self, mock_redis: MagicMock) -> Generator[CacheService, None, None]:

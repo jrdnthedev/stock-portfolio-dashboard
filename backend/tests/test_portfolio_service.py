@@ -1,139 +1,18 @@
 """Tests for PortfolioService using Repository Pattern with mock repositories."""
 
-from collections.abc import Generator
-from datetime import UTC, datetime
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 from uuid import UUID, uuid4
 
 import pytest
 
-from domains.portfolio.models.models import Holding, Portfolio
-from domains.portfolio.repositories.portfolio_repository import (
-    HoldingRepository,
-    PortfolioRepository,
-)
 from domains.portfolio.services.portfolio_service import PortfolioService
 
-
-def make_portfolio(**kwargs: Any) -> Portfolio:
-    defaults: dict[str, Any] = {
-        "id": uuid4(),
-        "name": "Test Portfolio",
-        "owner": "test_user",
-        "currency": "USD",
-        "created_at": datetime.now(UTC),
-    }
-    defaults.update(kwargs)
-    return Portfolio(**defaults)
-
-
-def make_holding(**kwargs: Any) -> Holding:
-    defaults: dict[str, Any] = {
-        "id": uuid4(),
-        "portfolio_id": uuid4(),
-        "ticker_id": uuid4(),
-        "quantity": 100.0,
-        "avg_cost_basis": 50.0,
-        "opened_at": datetime.now(UTC),
-    }
-    defaults.update(kwargs)
-    return Holding(**kwargs)
-
-
-@pytest.fixture
-def mock_kafka_producer() -> Generator[MagicMock, None, None]:
-    with patch("domains.portfolio.services.portfolio_service.KafkaProducer") as mock:
-        mock_instance = MagicMock()
-        mock.return_value = mock_instance
-        yield mock_instance
-
-
-@pytest.fixture
-def mock_portfolio_repo() -> Mock:
-    """Mock PortfolioRepository with in-memory storage."""
-    repo = Mock(spec=PortfolioRepository)
-    storage: dict[UUID, Portfolio] = {}
-
-    def create(portfolio: Portfolio) -> Portfolio:
-        storage[portfolio.id] = portfolio
-        return portfolio
-
-    def get_by_id(portfolio_id: UUID) -> Portfolio | None:
-        return storage.get(portfolio_id)
-
-    def list_by_owner(owner: str) -> list[Portfolio]:
-        return [p for p in storage.values() if p.owner == owner]
-
-    def list_all() -> list[Portfolio]:
-        return list(storage.values())
-
-    def update(portfolio: Portfolio) -> Portfolio:
-        if portfolio.id not in storage:
-            raise ValueError(f"Portfolio {portfolio.id} not found")
-        storage[portfolio.id] = portfolio
-        return portfolio
-
-    def delete(portfolio_id: UUID) -> bool:
-        if portfolio_id in storage:
-            del storage[portfolio_id]
-            return True
-        return False
-
-    repo.create.side_effect = create
-    repo.get_by_id.side_effect = get_by_id
-    repo.list_by_owner.side_effect = list_by_owner
-    repo.list_all.side_effect = list_all
-    repo.update.side_effect = update
-    repo.delete.side_effect = delete
-    return repo
-
-
-@pytest.fixture
-def mock_holding_repo() -> Mock:
-    """Mock HoldingRepository with in-memory storage."""
-    repo = Mock(spec=HoldingRepository)
-    storage: dict[UUID, Holding] = {}
-
-    def create(holding: Holding) -> Holding:
-        storage[holding.id] = holding
-        return holding
-
-    def get_by_id(holding_id: UUID) -> Holding | None:
-        return storage.get(holding_id)
-
-    def list_by_portfolio(portfolio_id: UUID) -> list[Holding]:
-        return [h for h in storage.values() if h.portfolio_id == portfolio_id]
-
-    def list_by_ticker(ticker_id: UUID) -> list[Holding]:
-        return [h for h in storage.values() if h.ticker_id == ticker_id]
-
-    def update(holding: Holding) -> Holding:
-        if holding.id not in storage:
-            raise ValueError(f"Holding {holding.id} not found")
-        storage[holding.id] = holding
-        return holding
-
-    def delete(holding_id: UUID) -> bool:
-        if holding_id in storage:
-            del storage[holding_id]
-            return True
-        return False
-
-    def delete_by_portfolio(portfolio_id: UUID) -> int:
-        to_delete = [h_id for h_id, h in storage.items() if h.portfolio_id == portfolio_id]
-        for h_id in to_delete:
-            del storage[h_id]
-        return len(to_delete)
-
-    repo.create.side_effect = create
-    repo.get_by_id.side_effect = get_by_id
-    repo.list_by_portfolio.side_effect = list_by_portfolio
-    repo.list_by_ticker.side_effect = list_by_ticker
-    repo.update.side_effect = update
-    repo.delete.side_effect = delete
-    repo.delete_by_portfolio.side_effect = delete_by_portfolio
-    return repo
+# noqa comments prevent ruff from removing these fixture imports
+from tests.test_fixtures import (  # noqa: F401
+    mock_holding_repo,
+    mock_kafka_producer,
+    mock_portfolio_repo,
+)
 
 
 @pytest.fixture

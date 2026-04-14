@@ -56,7 +56,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/*" = ["ARG002"]  # Pytest fixtures used for side effects
+"tests/*" = ["ARG002", "F811"]  # ARG002: Pytest fixtures used for side effects, F811: Pytest fixtures in test signatures
 
 [tool.ruff.lint.isort]
 known-third-party = ["fastapi", "pydantic", "uvicorn"]

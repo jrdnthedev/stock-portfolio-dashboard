@@ -4,21 +4,9 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy.orm import Session
 
 from seed.seed_database import TICKER_DATA, generate_mock_prices, seed_database_real
-
-
-@pytest.fixture
-def mock_db_session() -> Mock:
-    """Create a mock database session."""
-    session = Mock(spec=Session)
-    session.add = Mock()
-    session.add_all = Mock()
-    session.commit = Mock()
-    session.rollback = Mock()
-    session.query = Mock()
-    return session
+from tests.test_fixtures import mock_db_session  # noqa: F401
 
 
 class TestGenerateMockPrices:
