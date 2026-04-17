@@ -1,10 +1,26 @@
 # Health Check Module
 
-**Location**: # noqa: E999 `backend/gateway/health.py`
+> Comprehensive monitoring of critical infrastructure dependencies (PostgreSQL, Redis, Kafka).
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Purpose](#purpose)
+- [Architecture](#architecture)
+- [Health Check Functions](#health-check-functions)
+- [Usage](#usage)
+- [Response Format](#response-format)
+
+---
 
 ## Overview
 
 The health check module provides comprehensive monitoring of critical infrastructure dependencies. It performs active health checks on PostgreSQL, Redis, and Kafka to ensure the backend services are operational.
+
+**Location**: `backend/gateway/health.py`
 
 ## Purpose
 
@@ -262,3 +278,17 @@ curl http://localhost:8000/api/health
 - [ ] Add configurable timeouts per dependency
 - [ ] Include version information in health response
 - [ ] Add dependency graph visualization
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Infrastructure layer dependencies
+- **[Cache Service](README.Cache.md)** - Redis health checks
+- **[WebSocket Manager](README.WebSocket.md)** - Connection monitoring
+
+---
+
+**Last Updated**: April 2026
+**Component**: Health Monitoring
+**Module**: `backend/gateway/health.py`

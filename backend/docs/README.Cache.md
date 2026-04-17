@@ -1,6 +1,27 @@
 # Redis Cache Service
 
-A production-ready Redis caching service with TTL (Time To Live) management and intelligent cache key generation for the Stock Portfolio Dashboard backend. # noqa: E999
+> Production-ready Redis caching service with TTL management and intelligent cache key generation.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Quick Start](#quick-start)
+- [TTL Constants](#ttl-constants)
+- [Common Patterns](#common-patterns)
+- [API Reference](#api-reference)
+- [Best Practices](#best-practices)
+
+---
+
+## Overview
+
+A production-ready Redis caching service with TTL (Time To Live) management and intelligent cache key generation for the Stock Portfolio Dashboard backend.
 
 ## Features
 
@@ -368,3 +389,18 @@ else:
 - [Redis Documentation](https://redis.io/documentation)
 - [redis-py Documentation](https://redis-py.readthedocs.io/)
 - [Cache-Aside Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside)
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Caching in domain services
+- **[WebSocket Manager](README.WebSocket.md)** - Redis pub/sub integration
+- **[Response Formatter](README.Formatter.md)** - Caching formatted responses
+
+---
+
+**Last Updated**: April 2026
+**Component**: Caching Layer
+**Module**: `backend/gateway/cache.py`
+

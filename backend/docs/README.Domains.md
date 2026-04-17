@@ -1,10 +1,26 @@
 # Domain Layer Documentation
 
-**Location**: # noqa: E999 `backend/domains/`
+> Business logic implementation using Domain-Driven Design (DDD) principles with Domain Events and Repository Pattern.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Architecture Principles](#architecture-principles)
+- [Market Data Domain](#market-data-domain)
+- [Portfolio Domain](#portfolio-domain)
+- [Event-Driven Architecture](#event-driven-architecture)
+- [Repository Pattern](#repository-pattern)
+
+---
 
 ## Overview
 
 The domain layer implements business logic using **Domain-Driven Design** (DDD) principles. It consists of two primary domains: **Market Data** and **Portfolio Management**, each with their own models and services.
+
+**Location**: `backend/domains/`
 
 ---
 
@@ -1252,3 +1268,19 @@ pytest --cov=backend --cov-report=html
 - [ ] Connection heartbeat and auto-reconnection
 - [ ] Message acknowledgment and guaranteed delivery
 - [ ] Rate limiting per client
+
+---
+
+## See Also
+
+- **[Cache Service](README.Cache.md)** - Caching strategies in domain services
+- **[WebSocket Manager](README.WebSocket.md)** - Real-time event broadcasting
+- **[Integration Testing](README.Integration.md)** - Testing domain services
+- **[Authentication](README.Auth.md)** - Securing domain endpoints
+
+---
+
+**Last Updated**: April 2026
+**Component**: Domain-Driven Design Implementation
+**Module**: `backend/domains/`
+

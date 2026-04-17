@@ -1,6 +1,25 @@
 # Response Envelope Formatter
 
-A standardized response envelope formatter for consistent API responses across the Stock Portfolio Dashboard backend. # noqa: E999
+> Standardized response envelope formatter for consistent API responses across the Stock Portfolio Dashboard backend.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Response Structure](#response-structure)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage Examples](#usage-examples)
+- [API Reference](#api-reference)
+- [Best Practices](#best-practices)
+
+---
+
+## Overview
+
+A standardized response envelope formatter for consistent API responses across the Stock Portfolio Dashboard backend.
 
 ## Features
 
@@ -414,3 +433,17 @@ async def protected_route(token: str = Depends(verify_token)):
 - [FastAPI Response Models](https://fastapi.tiangolo.com/tutorial/response-model/)
 - [REST API Best Practices](https://restfulapi.net/)
 - [HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Using formatters in domain services
+- **[API Versioning](README.Versioning.md)** - Version headers in responses
+- **[Authentication](README.Auth.md)** - Error formatting for auth failures
+
+---
+
+**Last Updated**: April 2026
+**Component**: Response Formatting
+**Module**: `backend/gateway/formatter.py`
