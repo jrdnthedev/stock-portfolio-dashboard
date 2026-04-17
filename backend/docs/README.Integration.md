@@ -1,6 +1,20 @@
 # Integration Tests
 
-This directory contains integration tests for the Stock Portfolio Dashboard API using **testcontainers** to provide isolated, reproducible test environments. #noqa E999
+> Integration tests for the Stock Portfolio Dashboard API using testcontainers for isolated, reproducible test environments.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Running Tests](#running-tests)
+- [Test Coverage](#test-coverage)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+
+---
 
 ## Overview
 
@@ -402,3 +416,17 @@ When adding new API endpoints:
 4. Test happy path and error cases
 5. Verify database state changes
 6. Update this README with new test coverage
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Testing domain services
+- **[Authentication](README.Auth.md)** - Testing protected endpoints
+- **[Cache Service](README.Cache.md)** - Testing cached responses
+
+---
+
+**Last Updated**: April 2026
+**Component**: Testing Infrastructure
+**Test Suite**: `backend/tests/integration_test_*.py`

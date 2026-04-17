@@ -1,8 +1,25 @@
 # WebSocket Real-Time Updates
 
-This document describes the WebSocket implementation for real-time portfolio performance updates in the Stock Portfolio Dashboard. # noqa E999
+> Real-time portfolio performance updates via WebSocket with Redis-backed pub/sub for horizontal scaling.
 
-## Architecture Overview
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Components](#components)
+- [Usage](#usage)
+- [Message Protocols](#message-protocols)
+- [Client Examples](#client-examples)
+- [Testing](#testing)
+
+---
+
+## Overview
+
+This document describes the WebSocket implementation for real-time portfolio performance updates in the Stock Portfolio Dashboard.
 
 The WebSocket system enables real-time push notifications to connected clients when portfolio performance changes due to price updates:
 
@@ -381,6 +398,21 @@ Implement portfolio access control:
 - Verify client has permission to subscribe to portfolio
 - Reject subscriptions for inaccessible portfolios
 - Log unauthorized access attempts
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Event-driven architecture with Kafka
+- **[Cache Service](README.Cache.md)** - Redis integration patterns
+- **[Authentication](README.Auth.md)** - Adding JWT to WebSocket connections
+
+---
+
+**Last Updated**: April 2026
+**Component**: Real-Time Communication
+**Module**: `backend/gateway/websocket_manager.py`
+
 
 Example middleware:
 ```python

@@ -1,5 +1,21 @@
 # API Versioning Guide
 
+> URL-based API versioning strategy for backward compatibility and clear client upgrade paths.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Versioning Strategy](#versioning-strategy)
+- [Current Version](#current-version)
+- [Version Lifecycle](#version-lifecycle)
+- [Usage](#using-versioned-apis)
+- [Upgrade Path](#upgrade-path)
+
+---
+
 ## Overview
 
 The Stock Portfolio API uses URL-based versioning to ensure backward compatibility and provide a clear upgrade path for clients. All API endpoints are versioned using the `/api/v{number}` prefix.
@@ -372,3 +388,17 @@ A: No. New features are only added to the current version.
 | Version | Release Date | Sunset Date | Status | Notes |
 |---------|-------------|-------------|--------|-------|
 | v1 | 2026-04-12 | N/A | Active | Initial release |
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Service layer versioning
+- **[Response Formatter](README.Formatter.md)** - Version headers in responses
+- **[Authentication](README.Auth.md)** - Security across versions
+
+---
+
+**Last Updated**: April 2026
+**Component**: API Versioning Strategy
+**Module**: `backend/api/versioning.py`

@@ -1,6 +1,25 @@
 # JWT Authentication Middleware
 
-This module provides JWT-based authentication for the Stock Portfolio API.
+> JWT-based authentication for the Stock Portfolio API with bcrypt password hashing and role-based access control.
+
+📚 **[Documentation Index](README.md)** | 🏠 **[Main README](../README.md)**
+
+---
+
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Security Best Practices](#security-best-practices)
+
+---
+
+## Overview
+
+This module provides JWT-based authentication for the Stock Portfolio API with secure password hashing, token management, and role-based access control.
 
 ## Features
 
@@ -348,3 +367,18 @@ async def create_portfolio(
 4. **Implement login/register**: Create auth routes
 5. **Protect routes**: Add auth dependencies to sensitive endpoints
 6. **Frontend integration**: Update Angular app to handle tokens
+
+---
+
+## See Also
+
+- **[Domain Architecture](README.Domains.md)** - Understanding the domain layer
+- **[API Versioning](README.Versioning.md)** - API version management
+- **[Integration Testing](README.Integration.md)** - Testing authenticated endpoints
+
+---
+
+**Last Updated**: April 2026
+**Component**: Authentication & Security
+**Module**: `backend/middleware/auth.py`
+
