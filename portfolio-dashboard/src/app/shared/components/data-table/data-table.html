@@ -1,0 +1,50 @@
+<div id="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        @if (selectable()) {
+          <th scope="col">
+            <label class="sr-only" for="select-all-checkbox">Select All</label>
+            <input
+              id="select-all-checkbox"
+              type="checkbox"
+              [checked]="isAllSelected()"
+              (change)="toggleAll()"
+              [attr.aria-label]="isAllSelected() ? 'Deselect all rows' : 'Select all rows'"
+            />
+          </th>
+        }
+        @for (header of headers; track $index) {
+          <th scope="col">
+            {{ getHeaderLabel(header) }}
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of data(); track $index) {
+        <tr>
+          @if (selectable()) {
+            <td>
+              <label [attr.for]="'row-checkbox-' + $index" class="sr-only">
+                Select row {{ $index + 1 }}
+              </label>
+              <input
+                [id]="'row-checkbox-' + $index"
+                type="checkbox"
+                [checked]="isRowSelected(row)"
+                (change)="toggleRow(row)"
+                [attr.aria-label]="'Select row ' + ($index + 1)"
+              />
+            </td>
+          }
+          @for (header of headers; track $index) {
+            <td [attr.data-label]="getHeaderLabel(header)">
+              {{ getValue(row, header) }}
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
