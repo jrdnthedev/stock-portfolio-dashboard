@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { LineChartComponent } from './line-chart.component';
 
 describe('LineChartComponent', () => {
@@ -8,9 +9,9 @@ describe('LineChartComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LineChartComponent]
-    })
-    .compileComponents();
+      imports: [LineChartComponent],
+      providers: [provideZonelessChangeDetection(), provideAnimationsAsync()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(LineChartComponent);
     component = fixture.componentInstance;

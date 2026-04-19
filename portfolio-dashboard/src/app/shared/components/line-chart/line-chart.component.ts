@@ -81,7 +81,6 @@ export class LineChartComponent {
       ],
     },
   ];
-  view: number[] = [700, 300];
 
   // options
   legend = true;
@@ -94,14 +93,6 @@ export class LineChartComponent {
   xAxisLabel = 'Year';
   yAxisLabel = 'Population';
   timeline = true;
-
-  colorScheme = {
-    domain: ['#5AA454', '#E44D25', '#CFC0BB', '#7aa3e5', '#a8385d', '#aae3f5'],
-  };
-
-  constructor() {
-    // Object.assign(this, { this.multi });
-  }
 
   onSelect(data: RowItem): void {
     console.log('Item clicked', JSON.parse(JSON.stringify(data)));
