@@ -1,0 +1,23 @@
+#portfolio-summary-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media screen and (min-width: 768px) {
+  #portfolio-summary-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  #portfolio-summary-bar {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

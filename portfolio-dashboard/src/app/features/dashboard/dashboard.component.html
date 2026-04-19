@@ -1,1 +1,12 @@
-<p>dashboard works!</p>
+<section>
+  <div id="portfolio-summary-bar">
+    <app-stat-card></app-stat-card>
+    <app-stat-card></app-stat-card>
+    <app-stat-card></app-stat-card>
+    <app-stat-card></app-stat-card>
+  </div>
+  <div>
+    <app-line-chart></app-line-chart>
+  </div>
+  <app-data-table [data]="mockTickers"></app-data-table>
+</section>
