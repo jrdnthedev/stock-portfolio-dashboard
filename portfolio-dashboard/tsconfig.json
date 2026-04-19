@@ -16,13 +16,8 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "lib": ["ES2022", "dom"],
-    "baseUrl": ".",
     "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "rxjs": ["./node_modules/rxjs"],
-      "rxjs/*": ["./node_modules/rxjs/*"]
-    }
+    "resolveJsonModule": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
