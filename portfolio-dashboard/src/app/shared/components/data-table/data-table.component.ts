@@ -8,8 +8,8 @@ export interface TableColumn {
 @Component({
   selector: 'app-data-table',
   imports: [],
-  templateUrl: './data-table.html',
-  styleUrl: './data-table.scss',
+  templateUrl: './data-table.component.html',
+  styleUrl: './data-table.component.scss',
 })
 export class DataTableComponent<T> {
   data = input<T[]>([]);
