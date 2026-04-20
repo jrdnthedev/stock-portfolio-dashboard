@@ -13,7 +13,7 @@ export const environment = {
   tokenKey: 'jwt_token',
   refreshTokenKey: 'refresh_token',
   mockToken:
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjk5OTk5OTk5OTl9.mock-signature', // Mock token for development
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vX3VzZXIiLCJleHAiOjE3NzkyNDA2MDAsImlhdCI6MTc3NjY0ODYwMCwidHlwZSI6ImFjY2VzcyJ9.CBgCowDmnKbwPBecDKEogEutcQGtt7sRmPzzgn7heLU', // Valid JWT token for demo_user (expires in 30 days)
 
   // Feature Flags
   enableLogging: true,
