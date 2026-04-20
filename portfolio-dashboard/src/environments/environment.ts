@@ -12,6 +12,8 @@ export const environment = {
   // Authentication
   tokenKey: 'jwt_token',
   refreshTokenKey: 'refresh_token',
+  mockToken:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vX3VzZXIiLCJleHAiOjE3NzkyNDA2MDAsImlhdCI6MTc3NjY0ODYwMCwidHlwZSI6ImFjY2VzcyJ9.CBgCowDmnKbwPBecDKEogEutcQGtt7sRmPzzgn7heLU', // Valid JWT token for demo_user (expires in 30 days)
 
   // Feature Flags
   enableLogging: true,

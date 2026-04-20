@@ -4,6 +4,12 @@
   gap: 4px;
 }
 
+#portfolio-charts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
 section {
   display: flex;
   flex-direction: column;
@@ -11,7 +17,8 @@ section {
 }
 
 @media screen and (min-width: 768px) {
-  #portfolio-summary-bar {
+  #portfolio-summary-bar,
+  #portfolio-charts-row {
     grid-template-columns: repeat(2, 1fr);
   }
 }
