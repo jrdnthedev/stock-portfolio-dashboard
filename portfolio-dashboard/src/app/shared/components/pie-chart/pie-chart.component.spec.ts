@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { PieChartComponent } from './pie-chart.component';
 
@@ -8,9 +10,9 @@ describe('PieChartComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PieChartComponent]
-    })
-    .compileComponents();
+      imports: [PieChartComponent],
+      providers: [provideZonelessChangeDetection(), provideAnimationsAsync()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(PieChartComponent);
     component = fixture.componentInstance;
