@@ -53,7 +53,7 @@ if __name__ == "__main__":
     print()
 
     # Generate token valid for 30 days
-    token = generate_dev_token(user_id="dev-user", expires_days=30)
+    token = generate_dev_token(user_id="demo_user", expires_days=30)
 
     print("Generated Token:")
     print("=" * 80)
