@@ -30,7 +30,7 @@ export interface Holding {
     name: string;
   };
   quantity: number;
-  average_cost: number;
+  avg_cost_basis: number;
   current_price: number;
   total_cost: number;
   total_value: number;
