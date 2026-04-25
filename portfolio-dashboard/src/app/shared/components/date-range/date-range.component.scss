@@ -1,0 +1,48 @@
+.date-range-container {
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &.stacked form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  input[type='date'] {
+    border-radius: 3px;
+    border: 2px solid black;
+    padding: 3px 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+}
+
+.error {
+  font-size: 0.75rem;
+  color: crimson;
+  align-self: center;
+
+  .stacked & {
+    align-self: flex-start;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .date-range-container form {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
