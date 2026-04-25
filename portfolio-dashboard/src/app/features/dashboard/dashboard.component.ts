@@ -8,6 +8,11 @@ import { map, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe } from '@angular/common';
 import { DropdownComponent } from '../../shared/components/dropdown/dropdown.component';
+import {
+  DateRange,
+  DateRangeComponent,
+} from '../../shared/components/date-range/date-range.component';
+import { ButtonComponent } from '../../shared/components/button/button.component';
 
 export interface HoldingTableRow {
   'Avg Cost': string | null;
@@ -26,6 +31,8 @@ export interface HoldingTableRow {
     LineChartComponent,
     PieChartComponent,
     DropdownComponent,
+    DateRangeComponent,
+    ButtonComponent,
   ],
   providers: [CurrencyPipe],
   templateUrl: './dashboard.component.html',
@@ -75,5 +82,19 @@ export class DashboardComponent {
   onDailyChange(selectedDaily: string) {
     console.log(`Selected daily change: ${selectedDaily}`);
     // Implement filtering logic based on the selected daily change
+  }
+
+  onDateRangeChange(selectedDateRange: DateRange) {
+    console.log(`Selected date range: ${JSON.stringify(selectedDateRange)}`);
+    // Implement filtering logic based on the selected date range
+  }
+  onSave() {
+    console.log('Save button clicked');
+    // Implement save functionality, e.g., save current filters or settings
+  }
+
+  onReset() {
+    console.log('Reset button clicked');
+    // Implement reset functionality, e.g., reset filters or settings to default
   }
 }
