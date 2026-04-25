@@ -9,5 +9,17 @@
     <div><app-line-chart></app-line-chart></div>
     <div><app-pie-chart></app-pie-chart></div>
   </div>
-  <app-data-table [data]="tableData"></app-data-table>
+  <div id="filterbar">
+    <app-dropdown
+      name="sector"
+      [isStacked]="isFilterStacked"
+      (selectionChanged)="onSectorChange($event)"
+    ></app-dropdown>
+    <app-dropdown
+      name="daily"
+      [isStacked]="isFilterStacked"
+      (selectionChanged)="onDailyChange($event)"
+    ></app-dropdown>
+  </div>
+  <app-data-table [data]="tableData()"></app-data-table>
 </section>

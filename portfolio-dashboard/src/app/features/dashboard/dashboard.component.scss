@@ -21,6 +21,11 @@ section {
   gap: 12px;
 }
 
+#filterbar {
+  display: flex;
+  gap: 8px;
+}
+
 @media screen and (min-width: 768px) {
   #portfolio-summary-bar {
     grid-template-columns: repeat(2, 1fr);

@@ -196,6 +196,7 @@ button,
 [type='reset'],
 [type='submit'] {
   -webkit-appearance: button;
+  appearance: button;
   cursor: pointer;
 }
 
@@ -264,6 +265,7 @@ textarea {
 /* Reset search input */
 [type='search'] {
   -webkit-appearance: textfield;
+  appearance: textfield;
   outline-offset: -2px;
 }
 
@@ -274,6 +276,7 @@ textarea {
 /* File upload button */
 ::-webkit-file-upload-button {
   -webkit-appearance: button;
+  appearance: button;
   font: inherit;
 }
 
@@ -330,3 +333,13 @@ select {
 }
 
 /* ===== End CSS Reset ===== */
+
+* {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+*:focus {
+  outline: none;
+  border: 2px solid #007bff !important;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
