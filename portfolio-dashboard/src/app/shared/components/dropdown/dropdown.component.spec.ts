@@ -36,10 +36,10 @@ describe('DropdownComponent', () => {
     expect(select.id).toBe('my-select');
   });
 
-  it('should render one option per item in data', () => {
+  it('should render one option per item in data plus a default option', () => {
     const options: NodeListOf<HTMLOptionElement> = fixture.nativeElement.querySelectorAll('option');
-    expect(options.length).toBe(component.data.length);
-    component.data.forEach((item, i) => expect(options[i].value).toBe(item));
+    expect(options.length).toBe(component.data.length + 1);
+    component.data.forEach((item, i) => expect(options[i + 1].value).toBe(item));
   });
 
   it('should apply stacked class when isStacked is true', () => {
@@ -52,6 +52,18 @@ describe('DropdownComponent', () => {
   it('should not apply stacked class when isStacked is false', () => {
     const container: HTMLElement = fixture.nativeElement.querySelector('.label-container');
     expect(container.classList).not.toContain('stacked');
+  });
+
+  it('should hide the label when showLabel is false', () => {
+    const label: HTMLLabelElement = fixture.nativeElement.querySelector('label');
+    expect(label.classList).toContain('visually-hidden');
+  });
+
+  it('should show the label when showLabel is true', () => {
+    fixture.componentRef.setInput('showLabel', true);
+    fixture.detectChanges();
+    const label: HTMLLabelElement = fixture.nativeElement.querySelector('label');
+    expect(label.classList).not.toContain('visually-hidden');
   });
 
   it('should emit selected value via selectionChanged on change', () => {

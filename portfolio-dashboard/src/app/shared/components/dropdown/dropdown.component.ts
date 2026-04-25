@@ -12,6 +12,7 @@ export class DropdownComponent {
   @Input() name = 'test';
   @Input() label = 'Select an option';
   @Input() isStacked = false;
+  @Input() showLabel = false;
   selectionChanged = output<string>();
 
   onSelectionChange(event: Event) {
