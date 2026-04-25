@@ -3,6 +3,13 @@ import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { EChartsCoreOption } from 'echarts/core';
+
+interface TooltipParam {
+  marker: string;
+  seriesName: string;
+  value: number;
+  axisValue: string;
+}
 import {
   TitleComponent,
   TooltipComponent,
@@ -36,11 +43,10 @@ export class LineChartComponent {
     },
     tooltip: {
       trigger: 'axis',
-      formatter: (params: any) => {
-        const lines = params.map(
-          (p: any) => `${p.marker}${p.seriesName}: $${p.value.toLocaleString()}`
-        );
-        return `${params[0].axisValue}<br/>${lines.join('<br/>')}`;
+      formatter: (params: TooltipParam | TooltipParam[]) => {
+        const list = Array.isArray(params) ? params : [params];
+        const lines = list.map((p) => `${p.marker}${p.seriesName}: $${p.value.toLocaleString()}`);
+        return `${list[0].axisValue}<br/>${lines.join('<br/>')}`;
       },
     },
     legend: {
