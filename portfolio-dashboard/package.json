@@ -26,8 +26,9 @@
     "@angular/platform-server": "^20.3.0",
     "@angular/router": "^20.3.0",
     "@angular/ssr": "^20.3.4",
-    "@swimlane/ngx-charts": "^23.1.0",
+    "echarts": "^6.0.0",
     "express": "^5.1.0",
+    "ngx-echarts": "^20.0.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

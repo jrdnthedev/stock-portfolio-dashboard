@@ -6,6 +6,16 @@ import {
 import { expect } from 'vitest';
 import * as axeCore from 'axe-core';
 
+// ResizeObserver polyfill for jsdom (required by ngx-echarts)
+global.ResizeObserver = class ResizeObserver {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  observe() {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  unobserve() {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  disconnect() {}
+};
+
 // Initialize Angular testing environment
 getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
 

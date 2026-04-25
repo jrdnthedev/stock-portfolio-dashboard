@@ -8,6 +8,11 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 4px;
+
+  > div {
+    overflow: hidden;
+    min-width: 0;
+  }
 }
 
 section {
@@ -17,9 +22,11 @@ section {
 }
 
 @media screen and (min-width: 768px) {
-  #portfolio-summary-bar,
-  #portfolio-charts-row {
+  #portfolio-summary-bar {
     grid-template-columns: repeat(2, 1fr);
+  }
+  #portfolio-charts-row {
+    grid-template-columns: 2fr 1fr;
   }
 }
 

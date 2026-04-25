@@ -1,108 +1,97 @@
 import { Component } from '@angular/core';
-import { NgxChartsModule } from '@swimlane/ngx-charts';
+import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
+import * as echarts from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
+import { EChartsCoreOption } from 'echarts/core';
 
-export interface RowItem {
-  entries: [];
-  value: { name: string };
+interface TooltipParam {
+  marker: string;
+  seriesName: string;
+  value: number;
+  axisValue: string;
 }
+import {
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent,
+} from 'echarts/components';
+import { LineChart } from 'echarts/charts';
+
+echarts.use([
+  CanvasRenderer,
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent,
+  LineChart,
+]);
 
 @Component({
   selector: 'app-line-chart',
-  imports: [NgxChartsModule],
+  imports: [NgxEchartsDirective],
+  providers: [provideEchartsCore({ echarts })],
   templateUrl: './line-chart.component.html',
   styleUrl: './line-chart.component.scss',
 })
 export class LineChartComponent {
-  multi = [
-    {
-      name: 'Germany',
-      series: [
-        {
-          name: '1990',
-          value: 62000000,
-        },
-        {
-          name: '2010',
-          value: 73000000,
-        },
-        {
-          name: '2011',
-          value: 89400000,
-        },
-      ],
+  options: EChartsCoreOption = {
+    title: {
+      text: 'Portfolio Performance',
+      subtext: 'Last 12 months (mock data)',
+      left: 'center',
     },
-
-    {
-      name: 'USA',
-      series: [
-        {
-          name: '1990',
-          value: 250000000,
-        },
-        {
-          name: '2010',
-          value: 309000000,
-        },
-        {
-          name: '2011',
-          value: 311000000,
-        },
-      ],
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: TooltipParam | TooltipParam[]) => {
+        const list = Array.isArray(params) ? params : [params];
+        const lines = list.map((p) => `${p.marker}${p.seriesName}: $${p.value.toLocaleString()}`);
+        return `${list[0].axisValue}<br/>${lines.join('<br/>')}`;
+      },
     },
-
-    {
-      name: 'France',
-      series: [
-        {
-          name: '1990',
-          value: 58000000,
-        },
-        {
-          name: '2010',
-          value: 50000020,
-        },
-        {
-          name: '2011',
-          value: 58000000,
-        },
-      ],
+    legend: {
+      bottom: 0,
+      data: ['AAPL', 'MSFT', 'GOOGL'],
     },
-    {
-      name: 'UK',
-      series: [
-        {
-          name: '1990',
-          value: 57000000,
-        },
-        {
-          name: '2010',
-          value: 62000000,
-        },
-      ],
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      containLabel: true,
     },
-  ];
-
-  // options
-  legend = true;
-  showLabels = true;
-  animations = true;
-  xAxis = true;
-  yAxis = true;
-  showYAxisLabel = true;
-  showXAxisLabel = true;
-  xAxisLabel = 'Year';
-  yAxisLabel = 'Population';
-  timeline = true;
-
-  onSelect(data: RowItem): void {
-    console.log('Item clicked', JSON.parse(JSON.stringify(data)));
-  }
-
-  onActivate(data: RowItem): void {
-    console.log('Activate', JSON.parse(JSON.stringify(data)));
-  }
-
-  onDeactivate(data: RowItem): void {
-    console.log('Deactivate', JSON.parse(JSON.stringify(data)));
-  }
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: '${value}',
+      },
+    },
+    series: [
+      {
+        name: 'AAPL',
+        type: 'line',
+        smooth: true,
+        data: [162, 171, 178, 175, 169, 185, 191, 195, 188, 202, 210, 218],
+        itemStyle: { color: '#5470c6' },
+      },
+      {
+        name: 'MSFT',
+        type: 'line',
+        smooth: true,
+        data: [310, 318, 325, 320, 335, 350, 362, 375, 368, 382, 390, 405],
+        itemStyle: { color: '#91cc75' },
+      },
+      {
+        name: 'GOOGL',
+        type: 'line',
+        smooth: true,
+        data: [125, 130, 128, 135, 140, 138, 145, 150, 148, 155, 160, 168],
+        itemStyle: { color: '#fac858' },
+      },
+    ],
+  };
 }
