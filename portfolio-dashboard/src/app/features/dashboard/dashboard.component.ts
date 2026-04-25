@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { DataTableComponent } from '../../shared/components/data-table/data-table.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { LineChartComponent } from '../../shared/components/line-chart/line-chart.component';
@@ -27,7 +27,7 @@ export interface HoldingTableRow {
 export class DashboardComponent {
   private testId = '5e1a30de-d433-48f6-9974-c7cbd6da8ebe';
   holdingsData: Holding[] = [];
-  tableData: HoldingTableRow[] = [];
+  tableData = signal<HoldingTableRow[]>([]);
 
   constructor(
     private apiService: ApiService,
@@ -56,7 +56,7 @@ export class DashboardComponent {
         tap((tableData: HoldingTableRow[]) => console.log(tableData))
       )
       .subscribe((tableData: HoldingTableRow[]) => {
-        this.tableData = tableData;
+        this.tableData.set(tableData);
       });
   }
 }
