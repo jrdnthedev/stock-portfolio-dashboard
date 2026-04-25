@@ -1,13 +1,3 @@
 <div>
-  <ngx-charts-pie-chart
-    [results]="single"
-    [gradient]="gradient"
-    [legend]="showLegend"
-    [labels]="showLabels"
-    [doughnut]="isDoughnut"
-    (select)="onSelect($event)"
-    (activate)="onActivate($event)"
-    (deactivate)="onDeactivate($event)"
-  >
-  </ngx-charts-pie-chart>
+  <div echarts [options]="options" [theme]="theme" class="demo-chart"></div>
 </div>
