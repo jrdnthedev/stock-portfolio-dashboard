@@ -7,6 +7,7 @@ import { ApiResponse, ApiService, Holding } from '../../core/services/api.servic
 import { map, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe } from '@angular/common';
+import { DropdownComponent } from '../../shared/components/dropdown/dropdown.component';
 
 export interface HoldingTableRow {
   'Avg Cost': string | null;
@@ -19,7 +20,13 @@ export interface HoldingTableRow {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DataTableComponent, StatCardComponent, LineChartComponent, PieChartComponent],
+  imports: [
+    DataTableComponent,
+    StatCardComponent,
+    LineChartComponent,
+    PieChartComponent,
+    DropdownComponent,
+  ],
   providers: [CurrencyPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -28,7 +35,7 @@ export class DashboardComponent {
   private testId = '5e1a30de-d433-48f6-9974-c7cbd6da8ebe';
   holdingsData: Holding[] = [];
   tableData = signal<HoldingTableRow[]>([]);
-
+  isFilterStacked = false;
   constructor(
     private apiService: ApiService,
     private currencyPipe: CurrencyPipe
@@ -58,5 +65,15 @@ export class DashboardComponent {
       .subscribe((tableData: HoldingTableRow[]) => {
         this.tableData.set(tableData);
       });
+  }
+
+  onSectorChange(selectedSector: string) {
+    console.log(`Selected sector: ${selectedSector}`);
+    // Implement filtering logic based on the selected sector
+  }
+
+  onDailyChange(selectedDaily: string) {
+    console.log(`Selected daily change: ${selectedDaily}`);
+    // Implement filtering logic based on the selected daily change
   }
 }
