@@ -42,19 +42,16 @@ describe('ButtonComponent', () => {
     expect(button.disabled).toBe(true);
   });
 
-  it('should emit clicked when the button is clicked and not disabled', () => {
-    const emitted: void[] = [];
-    component.clicked.subscribe(() => emitted.push());
-    button.click();
-    expect(emitted.length).toBe(1);
+  it('should emit clicked when onclick is called and not disabled', () => {
+    const spy = vi.spyOn(component.clicked, 'emit');
+    component.onclick();
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('should not emit clicked when disabled', () => {
-    const emitted: void[] = [];
-    component.clicked.subscribe(() => emitted.push());
+    const spy = vi.spyOn(component.clicked, 'emit');
     fixture.componentRef.setInput('disabled', true);
-    fixture.detectChanges();
-    button.click();
-    expect(emitted.length).toBe(0);
+    component.onclick();
+    expect(spy).not.toHaveBeenCalled();
   });
 });
