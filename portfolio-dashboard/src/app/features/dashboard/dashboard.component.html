@@ -4,7 +4,7 @@
     <app-stat-card [value]="totalGain()" [title]="'Total Gain'"></app-stat-card>
     <app-stat-card [value]="positions()" [title]="'Positions'"></app-stat-card>
     <app-stat-card
-      [value]="topPerformer() ? topPerformer()!.gain : 0"
+      [value]="topPerformer() ? topPerformer()!.symbol + ' ' + topPerformer()!.gain : 0"
       [title]="'Top Performer'"
     ></app-stat-card>
   </div>
