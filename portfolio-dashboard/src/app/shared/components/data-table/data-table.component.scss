@@ -47,6 +47,13 @@ td:before {
   font-size: 12px;
   font-weight: bold;
 }
+
+.sort-icon {
+  visibility: hidden;
+}
+.visible {
+  visibility: visible;
+}
 @media screen and (min-width: 600px) {
   th {
     text-transform: uppercase;
