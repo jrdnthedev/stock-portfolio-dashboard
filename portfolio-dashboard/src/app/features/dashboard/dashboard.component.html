@@ -1,13 +1,16 @@
 <section>
   <div id="portfolio-summary-bar">
-    <app-stat-card></app-stat-card>
-    <app-stat-card></app-stat-card>
-    <app-stat-card></app-stat-card>
-    <app-stat-card></app-stat-card>
+    <app-stat-card [value]="totalValue()" [title]="'Total Value'"></app-stat-card>
+    <app-stat-card [value]="totalGain()" [title]="'Total Gain'"></app-stat-card>
+    <app-stat-card [value]="positions()" [title]="'Positions'"></app-stat-card>
+    <app-stat-card
+      [value]="topPerformer() ? topPerformer()!.gain : 0"
+      [title]="'Top Performer'"
+    ></app-stat-card>
   </div>
   <div id="portfolio-charts-row">
     <div><app-line-chart></app-line-chart></div>
-    <div><app-pie-chart></app-pie-chart></div>
+    <div><app-pie-chart [data]="sectorAllocation()" title="Sector Allocation"></app-pie-chart></div>
   </div>
   <div id="filterbar">
     <div>
@@ -24,7 +27,7 @@
       <app-date-range (rangeChanged)="onDateRangeChange($event)" [isStacked]="false" />
     </div>
     <div>
-      <app-button label="Save" variant="primary" (clicked)="onSave()"></app-button>
+      <app-button label="Apply" variant="primary" (clicked)="onSave()"></app-button>
       <app-button label="Reset" variant="secondary" (clicked)="onReset()"></app-button>
     </div>
   </div>
