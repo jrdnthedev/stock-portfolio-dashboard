@@ -67,13 +67,22 @@ describe('DropdownComponent', () => {
   });
 
   it('should emit selected value via selectionChanged on change', () => {
+    // Set up data input
+    const testData = [
+      { label: 'Option 1', value: 'value1' },
+      { label: 'Option 2', value: 'value2' },
+    ];
+    fixture.componentRef.setInput('data', testData);
+    fixture.detectChanges();
+
     const emitted: string[] = [];
     component.selectionChanged.subscribe((v: string) => emitted.push(v));
 
     const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
-    select.value = 'Option 2';
+    // Set value to the value property of Option 2
+    select.value = 'value2';
     select.dispatchEvent(new Event('change'));
 
-    expect(emitted).toEqual(['Option 2']);
+    expect(emitted).toEqual(['value2']);
   });
 });
