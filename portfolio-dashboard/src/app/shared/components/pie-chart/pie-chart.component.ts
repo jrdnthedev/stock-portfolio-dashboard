@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { NgxEchartsDirective, provideEchartsCore, ThemeOption } from 'ngx-echarts';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -10,6 +10,7 @@ import {
   LegendComponent,
 } from 'echarts/components';
 import { PieChart } from 'echarts/charts';
+import { PieChartOptions } from '../../../features/dashboard/dashboard.component';
 
 echarts.use([
   CanvasRenderer,
@@ -158,13 +159,16 @@ export const CoolTheme = {
   styleUrl: './pie-chart.component.scss',
 })
 export class PieChartComponent {
+  data = input<PieChartOptions[]>([]);
+  title = input<string>('Pie Chart Data');
+  subtitle = input<string>('');
   theme!: string | ThemeOption;
   coolTheme = CoolTheme;
-  options: EChartsCoreOption = {
+  options = computed<EChartsCoreOption>(() => ({
     title: {
       left: '50%',
-      text: 'Nightingale Rose Diagram',
-      subtext: 'Mocking Data',
+      text: this.title(),
+      subtext: this.subtitle(),
       textAlign: 'center',
     },
     tooltip: {
@@ -230,12 +234,8 @@ export class PieChartComponent {
         minShowLabelAngle: 5,
 
         // Data
-        data: [
-          { value: 40, name: 'AAPL' },
-          { value: 30, name: 'MSFT', selected: true }, // pre-selected slice
-          { value: 20, name: 'GOOGL', itemStyle: { color: '#ff0000' } }, // per-item style
-        ],
+        data: [...this.data()],
       },
     ],
-  };
+  }));
 }

@@ -24,6 +24,15 @@ section {
 #filterbar {
   display: flex;
   gap: 8px;
+  flex-direction: column;
+  div:first-child {
+    flex: 1;
+  }
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 @media screen and (min-width: 768px) {
@@ -32,6 +41,12 @@ section {
   }
   #portfolio-charts-row {
     grid-template-columns: 2fr 1fr;
+  }
+  #filterbar {
+    flex-direction: row;
+    div {
+      flex-direction: row;
+    }
   }
 }
 

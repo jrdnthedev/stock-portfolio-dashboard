@@ -1,8 +1,9 @@
 <div class="label-container" [ngClass]="{ stacked: isStacked }">
-  <label [for]="name">{{ label }}</label>
+  <label [for]="name" [ngClass]="{ 'visually-hidden': !showLabel }">{{ label }}</label>
   <select [name]="name" [id]="name" (change)="onSelectionChange($event)">
+    <option [value]="">{{ name }}</option>
     @for (item of data; track $index) {
-      <option [value]="item">{{ item }}</option>
+      <option [value]="item.value">{{ item.label }}</option>
     }
   </select>
 </div>

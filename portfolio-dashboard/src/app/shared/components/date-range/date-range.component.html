@@ -1,0 +1,19 @@
+<div class="date-range-container" [class.stacked]="isStacked">
+  <form [formGroup]="form">
+    <div class="field">
+      @if (showLabel) {
+        <label for="startDate">Start Date</label>
+      }
+      <input type="date" id="startDate" formControlName="startDate" />
+    </div>
+    <div class="field">
+      @if (showLabel) {
+        <label for="endDate">End Date</label>
+      }
+      <input type="date" id="endDate" formControlName="endDate" />
+    </div>
+    @if (form.hasError('endBeforeStart')) {
+      <span class="error">End date must be on or after start date.</span>
+    }
+  </form>
+</div>
