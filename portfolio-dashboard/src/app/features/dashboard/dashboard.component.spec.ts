@@ -96,26 +96,26 @@ describe('DashboardComponent', () => {
       expect(component.tableData()).toHaveLength(1);
       expect(component.tableData()[0]).toMatchObject({
         symbol: 'AAPL',
-        Qty: 10,
-        'Avg Cost': '$100.00',
-        Price: '$150.00',
-        'Mkt Value': '$1,500.00',
-        'PBL $': '$500.00',
-        'PBL %': '50.00%',
+        qty: 10,
+        avg_cost: 100,
+        price: 150,
+        mkt_value: 1500,
+        pbl_dollar: 500,
+        pbl_percent: 50,
       });
       expect(component.sectorAllocation()).toEqual([{ name: 'AAPL', value: 1500 }]);
-      expect(component.totalValue()).toBe('$10,000.00');
-      expect(component.totalGain()).toBe('$2,000.00');
-      expect(component.positions()).toBe('1');
-      expect(component.topPerformer()).toEqual({ symbol: 'AAPL', gain: '+50.00%' });
+      expect(component.totalValue()).toBe(10000);
+      expect(component.totalGain()).toBe(2000);
+      expect(component.positions()).toBe(1);
+      expect(component.topPerformer()).toEqual({ symbol: 'AAPL', gain: 50 });
     });
 
-    it('should set topPerformer to null and positions to "0" when holdings are empty', () => {
+    it('should set topPerformer to null and positions to 0 when holdings are empty', () => {
       apiServiceSpy.getHoldings.mockReturnValue(of({ status: 'ok', message: '', data: [] }));
       fixture.detectChanges();
 
       expect(component.tableData()).toEqual([]);
-      expect(component.positions()).toBe('0');
+      expect(component.positions()).toBe(0);
       expect(component.topPerformer()).toBeNull();
     });
 
@@ -143,7 +143,7 @@ describe('DashboardComponent', () => {
       expect(component.sectorAllocation()).toEqual([]);
       expect(component.totalValue()).toBeNull();
       expect(component.totalGain()).toBeNull();
-      expect(component.positions()).toBe('0');
+      expect(component.positions()).toBe(0);
       expect(component.topPerformer()).toBeNull();
     });
   });

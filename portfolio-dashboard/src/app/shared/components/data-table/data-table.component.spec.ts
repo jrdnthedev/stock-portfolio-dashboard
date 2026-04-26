@@ -6,6 +6,7 @@ import { DataTableComponent, TableColumn } from './data-table.component';
 interface TestRow {
   id: number;
   name: string;
+  [key: string]: string | number | null;
 }
 
 const ROWS: TestRow[] = [
@@ -13,16 +14,20 @@ const ROWS: TestRow[] = [
   { id: 2, name: 'Bob' },
 ];
 
-const COLUMNS: TableColumn[] = [
-  { key: 'id', label: 'ID' },
-  { key: 'name', label: 'Full Name' },
+const COLUMNS: TableColumn<TestRow>[] = [
+  { key: 'id', label: 'ID', type: 'number' },
+  { key: 'name', label: 'Full Name', type: 'string' },
 ];
 
 describe('DataTableComponent', () => {
   let component: DataTableComponent<TestRow>;
   let fixture: ComponentFixture<DataTableComponent<TestRow>>;
 
-  function setInputs(opts: { data?: TestRow[]; columns?: TableColumn[]; selectable?: boolean }) {
+  function setInputs(opts: {
+    data?: TestRow[];
+    columns?: TableColumn<TestRow>[];
+    selectable?: boolean;
+  }) {
     if (opts.data !== undefined) fixture.componentRef.setInput('data', opts.data);
     if (opts.columns !== undefined) fixture.componentRef.setInput('columns', opts.columns);
     if (opts.selectable !== undefined) fixture.componentRef.setInput('selectable', opts.selectable);
@@ -35,7 +40,7 @@ describe('DataTableComponent', () => {
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(DataTableComponent) as ComponentFixture<
+    fixture = TestBed.createComponent(DataTableComponent) as unknown as ComponentFixture<
       DataTableComponent<TestRow>
     >;
     component = fixture.componentInstance;
@@ -64,7 +69,7 @@ describe('DataTableComponent', () => {
     });
 
     it('should prefer columns over auto-generated keys when both are set', () => {
-      const subset: TableColumn[] = [{ key: 'name', label: 'Name' }];
+      const subset: TableColumn<TestRow>[] = [{ key: 'name', label: 'Name', type: 'string' }];
       setInputs({ columns: subset, data: ROWS });
       expect(component.headers).toEqual(['name']);
     });
@@ -84,12 +89,12 @@ describe('DataTableComponent', () => {
     });
   });
 
-  // ==================== getValue ====================
+  // ==================== getRawValue ====================
 
-  describe('getValue', () => {
+  describe('getRawValue', () => {
     it('should return the value for the specified key on a row', () => {
-      expect(component.getValue(ROWS[0], 'name')).toBe('Alice');
-      expect(component.getValue(ROWS[1], 'id')).toBe(2);
+      expect(component.getRawValue(ROWS[0], 'name')).toBe('Alice');
+      expect(component.getRawValue(ROWS[1], 'id')).toBe(2);
     });
   });
 
@@ -222,8 +227,8 @@ describe('DataTableComponent', () => {
       const ths: NodeListOf<HTMLTableCellElement> =
         fixture.nativeElement.querySelectorAll('thead th');
       const labels = Array.from(ths).map((th) => th.textContent?.trim());
-      expect(labels).toContain('ID');
-      expect(labels).toContain('Full Name');
+      expect(labels).toContain('ID ▲');
+      expect(labels).toContain('Full Name ▲');
     });
 
     it('should render a <tr> for each data row', () => {

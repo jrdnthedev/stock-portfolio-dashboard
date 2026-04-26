@@ -15,8 +15,16 @@
           </th>
         }
         @for (header of headers; track $index) {
-          <th scope="col">
+          <th scope="col" (click)="sortCol(header)" class="col-header">
             {{ getHeaderLabel(header) }}
+            <span class="sort-icon" [ngClass]="{ visible: sortColumn === header }">
+              @if (sortDirection === 'asc') {
+                <span>▲</span>
+              }
+              @if (sortDirection === 'desc') {
+                <span>▼</span>
+              }
+            </span>
           </th>
         }
       </tr>
@@ -40,7 +48,7 @@
           }
           @for (header of headers; track $index) {
             <td [attr.data-label]="getHeaderLabel(header)">
-              {{ getValue(row, header) }}
+              {{ getFormattedValue(row, header) }}
             </td>
           }
         </tr>
