@@ -8,7 +8,7 @@ import { Component, Input, output } from '@angular/core';
   styleUrl: './dropdown.component.scss',
 })
 export class DropdownComponent {
-  data: string[] = ['Option 1', 'Option 2', 'Option 3'];
+  @Input() data: { label: string; value: string }[] = [];
   @Input() name = 'test';
   @Input() label = 'Select an option';
   @Input() isStacked = false;
