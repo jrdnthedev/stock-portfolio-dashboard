@@ -24,7 +24,7 @@ describe('PieChartComponent', () => {
   });
 
   it('should have options defined', () => {
-    expect(component.options).toBeDefined();
+    expect(component.options()).toBeDefined();
   });
 
   it('should expose coolTheme equal to CoolTheme constant', () => {
@@ -36,14 +36,19 @@ describe('PieChartComponent', () => {
   });
 
   it('should have a single pie series named Portfolio', () => {
-    const series = component.options['series'] as { name: string; type: string }[];
+    const series = component.options()['series'] as { name: string; type: string }[];
     expect(series).toHaveLength(1);
     expect(series[0].name).toBe('Portfolio');
     expect(series[0].type).toBe('pie');
   });
 
-  it('should have three data slices for AAPL, MSFT and GOOGL', () => {
-    const series = component.options['series'] as { data: { name: string }[] }[];
+  it('should reflect data input in the pie series', () => {
+    fixture.componentRef.setInput('data', [
+      { name: 'AAPL', value: 100 },
+      { name: 'MSFT', value: 200 },
+      { name: 'GOOGL', value: 150 },
+    ]);
+    const series = component.options()['series'] as { data: { name: string }[] }[];
     expect(series[0].data.map((d) => d.name)).toEqual(['AAPL', 'MSFT', 'GOOGL']);
   });
 
