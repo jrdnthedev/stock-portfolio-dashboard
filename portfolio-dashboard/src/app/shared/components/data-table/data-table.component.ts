@@ -1,8 +1,8 @@
 import { NgClass } from '@angular/common';
 import { Component, input, output, signal } from '@angular/core';
 
-export interface TableColumn<T = any> {
-  key: string;
+export interface TableColumn<T> {
+  key: keyof T & string;
   label: string;
   type: 'string' | 'number' | 'currency' | 'percent';
   formatter?: (value: T[keyof T], row: T) => T[keyof T];
@@ -14,7 +14,7 @@ export interface TableColumn<T = any> {
   templateUrl: './data-table.component.html',
   styleUrl: './data-table.component.scss',
 })
-export class DataTableComponent<T> {
+export class DataTableComponent<T extends Record<string, string | number | null>> {
   data = input<T[]>([]);
   columns = input<TableColumn<T>[]>([]);
   selectable = input(false);
@@ -23,14 +23,13 @@ export class DataTableComponent<T> {
   // Internal state for selected rows
   private _selectedRows = signal<Set<T>>(new Set());
 
-  get headers(): string[] {
+  get headers(): (keyof T & string)[] {
     // If columns are provided, use them; otherwise auto-generate from data
     if (this.columns() && this.columns().length > 0) {
-      return this.columns().map((col: TableColumn) => col.key);
+      return this.columns().map((col: TableColumn<T>) => col.key);
     }
-
     if (this.data() && this.data().length > 0) {
-      return Object.keys(this.data()[0] as object);
+      return Object.keys(this.data()[0] as object) as (keyof T & string)[];
     }
     return [];
   }

@@ -15,7 +15,7 @@
           </th>
         }
         @for (header of headers; track $index) {
-          <th scope="col" (click)="sortCol(header)">
+          <th scope="col" (click)="sortCol(header)" class="col-header">
             {{ getHeaderLabel(header) }}
             <span class="sort-icon" [ngClass]="{ visible: sortColumn === header }">
               @if (sortDirection === 'asc') {

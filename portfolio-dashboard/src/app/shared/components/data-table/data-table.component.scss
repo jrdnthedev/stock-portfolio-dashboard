@@ -47,7 +47,10 @@ td:before {
   font-size: 12px;
   font-weight: bold;
 }
-
+.col-header {
+  cursor: pointer;
+  user-select: none;
+}
 .sort-icon {
   visibility: hidden;
 }
