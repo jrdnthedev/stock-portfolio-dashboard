@@ -25,6 +25,7 @@ export interface HoldingTableRow {
   pbl_percent: number | null;
   mkt_value: number | null;
   qty: number;
+  [key: string]: string | number | null;
 }
 
 export interface PieChartOptions {
