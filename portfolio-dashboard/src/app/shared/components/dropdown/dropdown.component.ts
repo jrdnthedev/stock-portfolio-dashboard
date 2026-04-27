@@ -1,9 +1,9 @@
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, Input, output } from '@angular/core';
 
 @Component({
   selector: 'app-dropdown',
-  imports: [CommonModule],
+  imports: [NgClass],
   templateUrl: './dropdown.component.html',
   styleUrl: './dropdown.component.scss',
 })

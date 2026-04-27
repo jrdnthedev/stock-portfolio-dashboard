@@ -1,10 +1,10 @@
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, Input, output } from '@angular/core';
 import { Subject, throttleTime } from 'rxjs';
 
 @Component({
   selector: 'app-button',
-  imports: [CommonModule],
+  imports: [NgClass],
   templateUrl: './button.component.html',
   styleUrl: './button.component.scss',
 })
