@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, output } from '@angular/core';
 import {
   AbstractControl,
@@ -23,7 +22,7 @@ function endAfterStart(control: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-date-range',
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule],
   templateUrl: './date-range.component.html',
   styleUrl: './date-range.component.scss',
 })
